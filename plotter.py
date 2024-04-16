@@ -3,7 +3,22 @@ import matplotlib.pyplot as plt
 from processing import ImageProcessor
 
 def pad_image(image, max_height):
-    """Pad an image to a specified maximum height."""
+    """
+    Padding the image for equal image height to avoid any errors occurring while concatenating the images.
+    Parameters
+    ----------
+    image : np.ndarray
+        2D image array.
+
+    max_height : int
+        Maximum height of images in all slices.
+
+    Returns
+    -------
+    np.ndarray
+        Padded 2D image array.
+    
+    """
     pad_size = max_height - image.shape[0]
     pad_top = pad_size // 2
     pad_bottom = pad_size - pad_top
