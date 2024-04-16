@@ -77,16 +77,14 @@ def fs_roi_mask(threed_image_array, roi=None, label_indices=None):
     elif label_indices is not None and roi is None:
         # Check if the label_indices are valid and present in the threed_image_array
         if not all([value in threed_image_array for value in label_indices]):
-            raise ValueError("The specified ROI is not available in the provided aparc+aseg image.")
-        
+            raise ValueError(f"The ROI with the label indices {label_indices} is not available in the QC FreeSurfer LUT Dictionary.")
         else:
             for value in label_indices:
                 mask[threed_image_array == value] = 1
             return mask
 
     else:
-        raise ValueError("The specified ROI is not available in the QC FreeSurfer LUT Dictionary.")
-    
+        raise ValueError(f"The ROI {roi} is not available in the QC FreeSurfer LUT Dictionary.")
 class SliceSelector:
     def __init__(self, aparc):
         self.aparc = aparc
@@ -112,11 +110,8 @@ class SliceSelector:
             return int(selected_slice)
         
         elif num_slices is not None:
-            selected_slice = np.percentile(axis_slices, 50)
-            slice_range_left = np.linspace(axis_slices[0], selected_slice, num_slices//2, dtype=int)
-            slice_range_right = np.linspace(selected_slice, axis_slices[-1], num_slices//2 + 1, dtype=int)[1:] 
-            slice_range = np.concatenate((slice_range_left, slice_range_right))
-            return [int(slice) for slice in slice_range]
+            print(" Work in progress for the opttion num_slices, please check back later.")
+            #return [int(slice) for slice in slice_range]
         
         else:
             raise ValueError("Please specify either a percentile value or the number of slices.")
@@ -136,3 +131,34 @@ class SliceSelector:
             else:
                 raise ValueError(f"axis {axis} not recognized")
         return self._select_slices(axis, roi, label_indices, percentile, num_slices)
+    
+    def select_leads_slices(self):
+        # Selecting 6 axial slices. One with 50 percentile to the cerebellum, and one with 50 percentile to the superiorparietal.
+        # Equally spaced between the start, 50 percentile to the cerebellum, 50 percentile to the superiorparietal, and the end.
+        cerebellum_slice_1 = self._select_slices(axis=2, roi='cerebellum', percentile=0.25)
+        cerebellum_slice_2 = self._select_slices(axis=2, roi='cerebellum', percentile=0.5)
+        superiorparietal_slices = self._select_slices(axis=2, roi='superiorparietal', percentile=0.5)
+        cerebral_white_matter_2 = self._select_slices(axis=2, label_indices = [2, 41], percentile=0.5)
+        cerebral_white_matter_3 = self._select_slices(axis=2, label_indices = [2, 41], percentile=0.75)
+        cerebral_white_matter_4 = self._select_slices(axis=2, label_indices = [2, 41], percentile=0.95)
+
+        axial_slices = [cerebellum_slice_1, cerebellum_slice_2, superiorparietal_slices, cerebral_white_matter_2, cerebral_white_matter_3, cerebral_white_matter_4]
+        # Reordering the slices in ascending order
+        axial_slices.sort()
+
+        # Selecting 2 coronal slices. First slice with 50 percentile to the cerebellum and the second slice with 50 percentile to the hippocampus.
+        cerebellum_slice = self._select_slices(axis=1, roi='cerebellum', percentile=0.5)
+        hippocampus_slice = self._select_slices(axis=1, roi='hippocampus', percentile=0.5)
+
+        coronal_slices = [cerebellum_slice, hippocampus_slice]
+
+        # Selecting 2 sagittal slices. One with 50 percentile to the left cingulate and 50 percentile to the left hippocampus.
+        left_cingulate_slice = self._select_slices(axis=0, label_indices = [1002, 1026, 1023, 1010], percentile=0.5)
+        left_hippocampus_slice = self._select_slices(axis=0, label_indices = [17], percentile=0.5)
+
+        sagittal_slices = [left_cingulate_slice, left_hippocampus_slice]
+
+        return axial_slices, coronal_slices, sagittal_slices
+
+
+
