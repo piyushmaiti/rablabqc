@@ -2,11 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from processing import ImageProcessor
 
-#def pad_image(image, max_height):
-#    """Pad an image to a specified maximum height, equally padding at the top and bottom."""
-#    pad_size = (max_height - image.shape[0]) // 2
-#    return np.pad(image, ((pad_size, max_height - image.shape[0] - pad_size), (0, 0)), mode='constant', constant_values=0)
-
 def pad_image(image, max_height):
     """Pad an image to a specified maximum height."""
     pad_size = max_height - image.shape[0]

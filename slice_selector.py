@@ -1,32 +1,3 @@
-"""
-slice_selector.py
-
-Author: Piyush Maiti
-Email: piyush.maiti@ucsf.edu
-Date: 2024-04-08
-Created at: RabLab, University of California, San Francisco
-
-Description:
-This script provides functionality to select slices for axial, sagittal, and coronal views from a 3D volume NIfTI file represented as a numpy array. 
-This script is a part of the "RabLab Quality Control" package.
-
-Usage:
-- Import this script into your project to utilize the slice selection functionality.
-- Ensure that the necessary dependencies (such as numpy and nibabel) are installed.
-- Example usage:
-    ```python
-    from slice_selector import select_axial_slices
-
-    # Load your 3D volume NIfTI file as a numpy array
-    nifti_array = load_nifti_as_numpy('your_nifti_file.nii.gz')
-
-    # Select default slices for axial
-    axial_slices = select_axial_slices(nifti_array)
-
-    # Anchor points for all slices based on the aparc+aseg atlas
-
-    ```
-"""
 import numpy as np
 from freesurferlut import FreeSurferColorLUT
 
