@@ -79,7 +79,7 @@ class ImageProcessor:
         return padded_image
 
     @staticmethod
-    def mask_image(image, lower_threshold=1000, upper_threshold=2000):
+    def mask_image(image, lower_threshold, upper_threshold):
         # Create the mask using cv2.threshold
         _, mask = cv2.threshold(image, lower_threshold, upper_threshold, cv2.THRESH_BINARY)
 
@@ -108,4 +108,4 @@ class ImageProcessor:
 
     @staticmethod
     def msk_ctr(image):
-        return ImageProcessor.contour_image(ImageProcessor.mask_image(image))
+        return ImageProcessor.contour_image(ImageProcessor.mask_image(image, lower_threshold=0, upper_threshold=0))
