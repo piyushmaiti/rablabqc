@@ -10,7 +10,6 @@ class QCImageGenerator:
     There are two modes of operation:
     1. If an overlay image is provided, the function returns two images in the form of arrays with the overlay image combined with the underlay image.
     2. If no overlay image is provided, the function generates images in the form with only the underlay image.
-    
     """
 
     def __init__(self, underlay_img, select_axial_slices, select_sagittal_slices, select_coronal_slices,
