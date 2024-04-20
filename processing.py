@@ -49,13 +49,17 @@ class ImageProcessor:
                 x_max, y_max, w_max, h_max = x, y, w, h
         
         # Add padding at the top and bottom of the brain
-        # Note: Interchanging width and height padding to match the image orientation
-        # width_padding, height_padding = height_padding, width_padding
-        x_max -= width_padding # left
-        y_max -= height_padding # top
-        w_max += 2 * width_padding # right
-        h_max += 2 * height_padding # bottom
+        # x_max -= width_padding # left
+        # y_max -= height_padding # top
+        # w_max += 2 * width_padding # right
+        # h_max += 2 * height_padding # bottom
         
+        # Note: Interchanging width and height padding to match the images after the orientation change
+        x_max -= height_padding
+        y_max -= width_padding
+        w_max += 2 * height_padding
+        h_max += 2 * width_padding
+
         # Check if the padding is within the image boundaries
         if x_max < 0:
             x_max = 0
