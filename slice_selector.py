@@ -7,7 +7,7 @@ freesurfer_lut = {
     "hippocampus": [17, 53],
     "cerebellum": [7, 8, 46, 47],
     "superiorparietal": [1029, 2029],    
-    "cingulate": [1002, 1026, 1023, 1010, 2002, 2026, 2023, 2010],
+    "cingulate": [1002, 1026, 1023, 1010, 2002, 2026, 2023, 2010]
 }
 
 def fs_roi_mask(threed_image_array, roi=None, label_indices=None):
@@ -104,16 +104,10 @@ class SliceSelector:
         return self._select_slices(axis, roi, label_indices, percentile, num_slices)
     
     def select_leads_slices(self):
-        # Selecting 6 axial slices. One with 50 percentile to the cerebellum, and one with 50 percentile to the superiorparietal.
-        # Equally spaced between the start, 50 percentile to the cerebellum, 50 percentile to the superiorparietal, and the end.
-        cerebellum_slice_1 = self._select_slices(axis=2, roi='cerebellum', percentile=0.25)
-        cerebellum_slice_2 = self._select_slices(axis=2, roi='cerebellum', percentile=0.5)
-        superiorparietal_slices = self._select_slices(axis=2, roi='superiorparietal', percentile=0.5)
-        cerebral_white_matter_2 = self._select_slices(axis=2, label_indices = [2, 41], percentile=0.5)
-        cerebral_white_matter_3 = self._select_slices(axis=2, label_indices = [2, 41], percentile=0.75)
-        cerebral_white_matter_4 = self._select_slices(axis=2, label_indices = [2, 41], percentile=0.95)
-
-        axial_slices = [cerebellum_slice_1, cerebellum_slice_2, superiorparietal_slices, cerebral_white_matter_2, cerebral_white_matter_3, cerebral_white_matter_4]
+        # Selecting 6 axial slices, starting from 50 percentile to the cerebellum and ending at 50 percentile to the superiorparietal.
+        axial_cerebellum = self._select_slices(axis=2, roi='cerebellum', percentile=0.5)
+        axial_superiorparietal = self._select_slices(axis=2, roi='superiorparietal', percentile=0.5)
+        axial_slices = list(np.linspace(axial_cerebellum,axial_superiorparietal, 6, dtype=int))
         # Reordering the slices in ascending order
         axial_slices.sort()
 
