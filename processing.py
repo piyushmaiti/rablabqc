@@ -84,12 +84,9 @@ class ImageProcessor:
 
     @staticmethod
     def mask_image(image, lower_threshold, upper_threshold):
-        # Create the mask using cv2.threshold
-        _, mask = cv2.threshold(image, lower_threshold, upper_threshold, cv2.THRESH_BINARY)
-
-        # Normalize the mask to have values either 0 or 1
-        mask[mask > 0] = 1
-
+        mask = np.zeros_like(image)
+        # Set the pixel values = lower_threshold to 1 and pixel values = upper_threshold to 1, set everything else to 0
+        mask[(image >= lower_threshold) & (image <= upper_threshold)] = 1
         # Convert the mask to absolute integers
         mask = mask.astype(np.uint8)
         
