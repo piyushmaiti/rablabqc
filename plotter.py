@@ -1,4 +1,3 @@
-
 import cv2
 import numpy as np
 from processing import ImageProcessor
@@ -64,20 +63,22 @@ class QCImageGenerator:
     ###############################################################################
     # Functions for Padding the images for plotting
     ###############################################################################
-
+        
     def calculate_max_height(self):
         max_height = []
-        for slice_number in self.all_slices:
-            if slice_number in self.select_axial_slices:
-                img_slice = self.underlay_img[:, :, slice_number]
-            elif slice_number in self.select_sagittal_slices:
-                img_slice = self.underlay_img[slice_number, :, :]
-            elif slice_number in self.select_coronal_slices:
-                img_slice = self.underlay_img[:, slice_number, :]
-            
+        for slice_number in self.select_axial_slices:
+            img_slice = self.underlay_img[:, :, slice_number]
             padded_slice = ImageProcessor.brain_padding(img_slice, height_padding=self.height_padding, width_padding=self.width_padding)
             max_height.append(padded_slice.shape[0])
-        
+        for slice_number in self.select_sagittal_slices:
+            img_slice = self.underlay_img[slice_number, :, :]
+            padded_slice = ImageProcessor.brain_padding(img_slice, height_padding=self.height_padding, width_padding=self.width_padding)
+            max_height.append(padded_slice.shape[0])
+        for slice_number in self.select_coronal_slices:
+            img_slice = self.underlay_img[:, slice_number, :]
+            padded_slice = ImageProcessor.brain_padding(img_slice, height_padding=self.height_padding, width_padding=self.width_padding)
+            max_height.append(padded_slice.shape[0])
+
         return max_height
     
     def pad_image(self, image):
@@ -86,7 +87,8 @@ class QCImageGenerator:
         pad_bottom = pad_size - pad_top
         return np.pad(image, ((pad_top, pad_bottom), (0, 0)), mode='constant', constant_values=0)
         
-    def cropped_neck(self, image_to_crop, raparc_img_slice, neck_height_padding=50, neck_width_padding=60):
+    #def cropped_neck(self, image_to_crop, raparc_img_slice, neck_height_padding=50, neck_width_padding=60): -- # LEADS
+    def cropped_neck(self, image_to_crop, raparc_img_slice, neck_height_padding=50, neck_width_padding=80):
 
         image_array = raparc_img_slice.copy()
         # Converting the image to uint8
@@ -114,98 +116,336 @@ class QCImageGenerator:
         w_max = min(image_array.shape[1] - x_max, w_max)
         h_max = min(image_array.shape[0] - y_max, h_max)
         
+        # Show the final bounding box on image_to_crop
+        print("Test Breakpoint, May 15, 2024 @plotter.py @function cropped_neck")
+        rect = cv2.rectangle(image_to_crop.copy(), (x_max, y_max), (x_max + w_max, y_max + h_max), 255, 2)
+        import matplotlib.pyplot as plt
+        plt.imshow(rect, cmap='gray',vmin = 1, vmax=130)
+        plt.imshow(rect, cmap='gray',vmin = 1, vmax=130)
+        plt.show()
+        
+        print("Test Breakpoint, May 15, 2024 @plotter.py @function cropped_neck")
+
         cropped_image = image_to_crop[y_max:y_max + h_max, x_max:x_max + w_max]
         
         return cropped_image
 
 
-    def process_slices(self):
+    def process_overlays(self):
         combined_underlay_images = []
         combined_overlay_images = []
         
-        for slice_number in self.all_slices:
-            if self.crop_neck is not None:
-                if slice_number in self.select_axial_slices:
-                    underlay, overlay = ImageProcessor.brain_padding(self.underlay_img[:, :, slice_number], self.overlay_img[:, :, slice_number],
-                                                                    height_padding=self.height_padding, width_padding=self.width_padding)
-                    # Axial does not need to be cropped
-                elif slice_number in self.select_sagittal_slices:
-                    underlay, overlay = ImageProcessor.brain_padding(self.underlay_img[slice_number, :, :], self.overlay_img[slice_number, :, :],
-                                                                    height_padding=self.height_padding, width_padding=self.width_padding)
-                    
-                    underlay = self.cropped_neck(underlay, self.crop_neck[slice_number, :,:])
-                    overlay = self.cropped_neck(overlay, self.crop_neck[slice_number, :,:])
-
-                elif slice_number in self.select_coronal_slices:
-                    underlay, overlay = ImageProcessor.brain_padding(self.underlay_img[:, slice_number, :], self.overlay_img[:, slice_number, :],
-                                                                    height_padding=self.height_padding, width_padding=self.width_padding)
-                    
-                    underlay = self.cropped_neck(underlay, self.crop_neck[:, slice_number,:])
-                    overlay = self.cropped_neck(overlay, self.crop_neck[:, slice_number,:])
-
-            else:
-
-                if slice_number in self.select_axial_slices:
-                    underlay, overlay = ImageProcessor.brain_padding(self.underlay_img[:, :, slice_number], self.overlay_img[:, :, slice_number],
-                                                                    height_padding=self.height_padding, width_padding=self.width_padding)
-                elif slice_number in self.select_sagittal_slices:
-                    underlay, overlay = ImageProcessor.brain_padding(self.underlay_img[slice_number, :, :], self.overlay_img[slice_number, :, :],
-                                                                    height_padding=self.height_padding, width_padding=self.width_padding)
-                elif slice_number in self.select_coronal_slices:
-                    underlay, overlay = ImageProcessor.brain_padding(self.underlay_img[:, slice_number, :], self.overlay_img[:, slice_number, :],
-                                                                    height_padding=self.height_padding, width_padding=self.width_padding)
+        
+        if self.crop_neck is not None:
+            for slice_number in self.select_axial_slices:
+                underlay, overlay = ImageProcessor.brain_padding(self.underlay_img[:, :, slice_number], self.overlay_img[:, :, slice_number],
+                                                                height_padding=self.height_padding, width_padding=self.width_padding)
+                # Axial does not need to be cropped
+                ############ Padding + Optional Masking the overlay image + Appending to the list ############
+                underlay_padded = self.pad_image(underlay)
+                overlay_padded = self.pad_image(overlay)
                 
-            # Pad the images
-            underlay_padded = self.pad_image(underlay)
-            overlay_padded = self.pad_image(overlay)
-            
-            # Mask the overlay image if thresholds are provided
-            if self.mask_lower_threshold is not None and self.mask_upper_threshold is not None:
-                overlay_masked = ImageProcessor.mask_image(overlay_padded, lower_threshold=self.mask_lower_threshold, upper_threshold=self.mask_upper_threshold)
-            else:
-                overlay_masked = overlay_padded
+                # Mask the overlay image if thresholds are provided
+                if self.mask_lower_threshold is not None and self.mask_upper_threshold is not None:
+                    overlay_masked = ImageProcessor.mask_image(overlay_padded, lower_threshold=self.mask_lower_threshold, upper_threshold=self.mask_upper_threshold)
+                else:
+                    overlay_masked = overlay_padded
 
-            # Append images to lists
-            combined_underlay_images.append(underlay_padded)
-            combined_overlay_images.append(overlay_masked)
+                # Append images to lists
+                combined_underlay_images.append(underlay_padded)
+                combined_overlay_images.append(overlay_masked)
+                ################################################################################################
+
+            for slice_number in self.select_sagittal_slices:
+                underlay, overlay = ImageProcessor.brain_padding(self.underlay_img[slice_number, :, :], self.overlay_img[slice_number, :, :],
+                                                                height_padding=self.height_padding, width_padding=self.width_padding)
+                
+                underlay = self.cropped_neck(underlay, self.crop_neck[slice_number, :,:])
+                overlay = self.cropped_neck(overlay, self.crop_neck[slice_number, :,:])
+                ############ Padding + Optional Masking the overlay image + Appending to the list ############
+                underlay_padded = self.pad_image(underlay)
+                overlay_padded = self.pad_image(overlay)
+                
+                # Mask the overlay image if thresholds are provided
+                if self.mask_lower_threshold is not None and self.mask_upper_threshold is not None:
+                    overlay_masked = ImageProcessor.mask_image(overlay_padded, lower_threshold=self.mask_lower_threshold, upper_threshold=self.mask_upper_threshold)
+                else:
+                    overlay_masked = overlay_padded
+
+                # Append images to lists
+                combined_underlay_images.append(underlay_padded)
+                combined_overlay_images.append(overlay_masked)
+                ################################################################################################
+
+            for slice_number in self.select_coronal_slices:
+                underlay, overlay = ImageProcessor.brain_padding(self.underlay_img[:, slice_number, :], self.overlay_img[:, slice_number, :],
+                                                                height_padding=self.height_padding, width_padding=self.width_padding)
+                
+                underlay = self.cropped_neck(underlay, self.crop_neck[:, slice_number,:])
+                overlay = self.cropped_neck(overlay, self.crop_neck[:, slice_number,:])
+                ############ Padding + Optional Masking the overlay image + Appending to the list ############
+                underlay_padded = self.pad_image(underlay)
+                overlay_padded = self.pad_image(overlay)
+                
+                # Mask the overlay image if thresholds are provided
+                if self.mask_lower_threshold is not None and self.mask_upper_threshold is not None:
+                    overlay_masked = ImageProcessor.mask_image(overlay_padded, lower_threshold=self.mask_lower_threshold, upper_threshold=self.mask_upper_threshold)
+                else:
+                    overlay_masked = overlay_padded
+
+                # Append images to lists
+                combined_underlay_images.append(underlay_padded)
+                combined_overlay_images.append(overlay_masked)
+                ################################################################################################
+
+        else:
+
+            for slice_number in self.select_axial_slices:
+                underlay, overlay = ImageProcessor.brain_padding(self.underlay_img[:, :, slice_number], self.overlay_img[:, :, slice_number],
+                                                                height_padding=self.height_padding, width_padding=self.width_padding)
+                ############ Padding + Optional Masking the overlay image + Appending to the list ############
+                underlay_padded = self.pad_image(underlay)
+                overlay_padded = self.pad_image(overlay)
+                
+                # Mask the overlay image if thresholds are provided
+                if self.mask_lower_threshold is not None and self.mask_upper_threshold is not None:
+                    overlay_masked = ImageProcessor.mask_image(overlay_padded, lower_threshold=self.mask_lower_threshold, upper_threshold=self.mask_upper_threshold)
+                else:
+                    overlay_masked = overlay_padded
+
+                # Append images to lists
+                combined_underlay_images.append(underlay_padded)
+                combined_overlay_images.append(overlay_masked)
+                ################################################################################################
+
+            for slice_number in self.select_sagittal_slices:
+                underlay, overlay = ImageProcessor.brain_padding(self.underlay_img[slice_number, :, :], self.overlay_img[slice_number, :, :],
+                                                                height_padding=self.height_padding, width_padding=self.width_padding)
+                
+                ############ Padding + Optional Masking the overlay image + Appending to the list ############
+                underlay_padded = self.pad_image(underlay)
+                overlay_padded = self.pad_image(overlay)
+                
+                # Mask the overlay image if thresholds are provided
+                if self.mask_lower_threshold is not None and self.mask_upper_threshold is not None:
+                    overlay_masked = ImageProcessor.mask_image(overlay_padded, lower_threshold=self.mask_lower_threshold, upper_threshold=self.mask_upper_threshold)
+                else:
+                    overlay_masked = overlay_padded
+
+                # Append images to lists
+                combined_underlay_images.append(underlay_padded)
+                combined_overlay_images.append(overlay_masked)
+                ################################################################################################
+
+            for slice_number in self.select_coronal_slices:
+                underlay, overlay = ImageProcessor.brain_padding(self.underlay_img[:, slice_number, :], self.overlay_img[:, slice_number, :],
+                                                                height_padding=self.height_padding, width_padding=self.width_padding)
+                ############ Padding + Optional Masking the overlay image + Appending to the list ############
+                underlay_padded = self.pad_image(underlay)
+                overlay_padded = self.pad_image(overlay)
+                
+                # Mask the overlay image if thresholds are provided
+                if self.mask_lower_threshold is not None and self.mask_upper_threshold is not None:
+                    overlay_masked = ImageProcessor.mask_image(overlay_padded, lower_threshold=self.mask_lower_threshold, upper_threshold=self.mask_upper_threshold)
+                else:
+                    overlay_masked = overlay_padded
+
+                # Append images to lists
+                combined_underlay_images.append(underlay_padded)
+                combined_overlay_images.append(overlay_masked)
+                ################################################################################################
         
         return np.hstack(combined_underlay_images), np.hstack(combined_overlay_images)
     
     
     def generate_qc_images(self):
+        """
+        Generates the images as arrays that can be used to plot images using any plotting library.
+        Parameters:
+        ----------
+            None
+
+        Returns:
+        -------
+            numpy.ndarray: A numpy array of the combined underlay images.
+            numpy.ndarray: A numpy array of the combined overlay images, if overlay image is provided.
+
+        Usage:
+        ------
+            underlay_image, overlay_image = generate_qc_images()
+        """
         if self.overlay_img is not None:
-            return self.process_slices()
+            return self.process_overlays()
         
         else:
             combined_underlay_images = []
+            
             if self.crop_neck is not None:
-                for slice_number in self.all_slices:
-                    if slice_number in self.select_axial_slices:
-                        underlay = ImageProcessor.brain_padding(self.underlay_img[:, :, slice_number], height_padding=self.height_padding, width_padding=self.width_padding)
-                        # Axial does not need to be cropped
-                    elif slice_number in self.select_sagittal_slices:
-                        underlay = ImageProcessor.brain_padding(self.underlay_img[slice_number, :, :], height_padding=self.height_padding, width_padding=self.width_padding)
-                        underlay = self.cropped_neck(underlay, self.crop_neck[slice_number, :,:])
-                    elif slice_number in self.select_coronal_slices:
-                        underlay = ImageProcessor.brain_padding(self.underlay_img[:, slice_number, :], height_padding=self.height_padding, width_padding=self.width_padding)
-                        underlay = self.cropped_neck(underlay, self.crop_neck[:, slice_number,:])
-    
-                    # Pad the image
+                for slice_number in self.select_axial_slices:
+                    underlay = ImageProcessor.brain_padding(self.underlay_img[:, :, slice_number], height_padding=self.height_padding, width_padding=self.width_padding)
+                    # Axial does not need to be cropped
+                    ##### Padding + Appending to the list #####
                     underlay_padded = self.pad_image(underlay)
                     combined_underlay_images.append(underlay_padded)
-            
+                    ############################################
+                
+                for slice_number in self.select_sagittal_slices:
+                    underlay = ImageProcessor.brain_padding(self.underlay_img[slice_number, :, :], height_padding=self.height_padding, width_padding=self.width_padding)                    
+                    underlay = self.cropped_neck(underlay, self.crop_neck[slice_number, :,:])
+                    
+                    ##### Padding + Appending to the list #####
+                    underlay_padded = self.pad_image(underlay)
+                    combined_underlay_images.append(underlay_padded)
+                    ############################################
+
+                for slice_number in self.select_coronal_slices:
+                    underlay = ImageProcessor.brain_padding(self.underlay_img[:, slice_number, :], height_padding=self.height_padding, width_padding=self.width_padding)
+                    underlay = self.cropped_neck(underlay, self.crop_neck[:, slice_number,:])
+                    
+                    ###### Padding + Appending to the list ######
+                    underlay_padded = self.pad_image(underlay)
+                    combined_underlay_images.append(underlay_padded)
+                    ############################################
 
             else:
-                for slice_number in self.all_slices:
-                    if slice_number in self.select_axial_slices:
-                        underlay = ImageProcessor.brain_padding(self.underlay_img[:, :, slice_number], height_padding=self.height_padding, width_padding=self.width_padding)
-                    elif slice_number in self.select_sagittal_slices:
-                        underlay = ImageProcessor.brain_padding(self.underlay_img[slice_number, :, :], height_padding=self.height_padding, width_padding=self.width_padding)
-                    elif slice_number in self.select_coronal_slices:
-                        underlay = ImageProcessor.brain_padding(self.underlay_img[:, slice_number, :], height_padding=self.height_padding, width_padding=self.width_padding)
+                for slice_number in self.select_axial_slices:
+                    underlay = ImageProcessor.brain_padding(self.underlay_img[:, :, slice_number], height_padding=self.height_padding, width_padding=self.width_padding)
+                    ##### Padding + Appending to the list #####
+                    underlay_padded = self.pad_image(underlay)
+                    combined_underlay_images.append(underlay_padded)
+                    ############################################
+
+                for slice_number in self.select_sagittal_slices:
+                    underlay = ImageProcessor.brain_padding(self.underlay_img[slice_number, :, :], height_padding=self.height_padding, width_padding=self.width_padding)
+                    ##### Padding + Appending to the list #####
+                    underlay_padded = self.pad_image(underlay)
+                    combined_underlay_images.append(underlay_padded)
+                    ############################################
+
+                for slice_number in self.select_coronal_slices:
+                    underlay = ImageProcessor.brain_padding(self.underlay_img[:, slice_number, :], height_padding=self.height_padding, width_padding=self.width_padding)
+                    ###### Padding + Appending to the list ######
+                    underlay_padded = self.pad_image(underlay)
+                    combined_underlay_images.append(underlay_padded)
+                    ############################################                       
                     
-                    # Pad the image
+            return np.hstack(combined_underlay_images)
+        
+    def generate_lines(self):
+   
+        
+        combined_underlay_images = []
+
+        if self.crop_neck is not None:
+            for slice_number in self.select_axial_slices:
+                underlay = ImageProcessor.brain_padding(self.underlay_img[:, :, slice_number], height_padding=self.height_padding, width_padding=self.width_padding)
+                
+                # Add zero to the underlay image
+                underlay = np.zeros_like(underlay)
+                # Axial does not need to be cropped
+                ##### Padding + Appending to the list #####
+                underlay_padded = self.pad_image(underlay)
+                combined_underlay_images.append(underlay_padded)
+                ############################################
+            
+            for slice_number in self.select_sagittal_slices:
+                # adding lines to the first sagittal slice according to the axial slice selctions
+                
+                if slice_number == self.select_sagittal_slices[0]:
+                    underlay = ImageProcessor.brain_padding(self.underlay_img[slice_number, :, :], height_padding=self.height_padding, width_padding=self.width_padding)
+                    # Setting the underlay image to zero
+                    underlay = np.zeros_like(underlay)
+
+                    # Adding horizontal lines to the image according to the self.select_axial_slices                        
+                    for no in self.select_axial_slices:
+                        slice_no = underlay.shape[0] - no
+                        line_position = slice_no
+                        line_thickness = 2  # Adjust this value to control the thickness of the line
+                        line_range = range(max(0, line_position - line_thickness // 2),
+                                        min(underlay.shape[0], line_position + line_thickness // 2 + 1))
+                        for row in line_range:
+                            underlay[row, :] = 255
+                        
+                    underlay = self.cropped_neck(underlay, self.crop_neck[slice_number, :,:])
+                    ##### Padding + Appending to the list #####
+                    underlay_padded = self.pad_image(underlay)
+                    combined_underlay_images.append(underlay_padded)
+                else:
+                    underlay = ImageProcessor.brain_padding(self.underlay_img[slice_number, :, :], height_padding=self.height_padding, width_padding=self.width_padding)
+                    # Add zero to the underlay image
+                    underlay = np.zeros_like(underlay)
+
+                    # Adding vertical lines to the image according to the self.select_coronal_slices
+                    for no in self.select_coronal_slices:                                                
+                        slice_no = no
+                        line_position = slice_no
+                        line_thickness = 2
+                        line_range = range(max(0, line_position - line_thickness // 2),
+                                        min(underlay.shape[1], line_position + line_thickness // 2 + 1))
+                        for col in line_range:
+                            underlay[:, col] = 255
+
+                    underlay = self.cropped_neck(underlay, self.crop_neck[slice_number, :,:])
+                    ##### Padding + Appending to the list #####
+                    underlay_padded = self.pad_image(underlay)
+                    combined_underlay_images.append(underlay_padded)
+
+                ############################################
+
+            for slice_number in self.select_coronal_slices:
+
+                # adding lines to the first coronal slice according to the sagittal slice selctions
+
+                if slice_number == self.select_coronal_slices[0]:
+                    underlay = ImageProcessor.brain_padding(self.underlay_img[:, slice_number, :], height_padding=self.height_padding, width_padding=self.width_padding)
+                    # Add zero to the underlay image
+                    underlay = np.zeros_like(underlay)
+                    # Adding vertical lines to the image according to the self.select_sagittal_slices
+                    
+                    for no in self.select_sagittal_slices:
+                        slice_no = underlay.shape[1] - no
+                        line_position = slice_no
+                        line_thickness = 2  # Adjust this value to control the thickness of the line
+                        line_range = range(max(0, line_position - line_thickness // 2),
+                                        min(underlay.shape[1], line_position + line_thickness // 2 + 1))
+                        for col in line_range:
+                            underlay[:, col] = 255
+
+                    underlay = self.cropped_neck(underlay, self.crop_neck[:, slice_number,:])
+                    ###### Padding + Appending to the list ######
                     underlay_padded = self.pad_image(underlay)
                     combined_underlay_images.append(underlay_padded)
             
-            return np.hstack(combined_underlay_images)
+                else:
+                    underlay = ImageProcessor.brain_padding(self.underlay_img[:, slice_number, :], height_padding=self.height_padding, width_padding=self.width_padding)
+                    # Add zero to the underlay image
+                    underlay = np.zeros_like(underlay)
+                    underlay = self.cropped_neck(underlay, self.crop_neck[:, slice_number,:])
+                    ###### Padding + Appending to the list ######
+                    underlay_padded = self.pad_image(underlay)
+                    combined_underlay_images.append(underlay_padded)
+                ############################################
+
+        else:
+            for slice_number in self.select_axial_slices:
+                underlay = ImageProcessor.brain_padding(self.underlay_img[:, :, slice_number], height_padding=self.height_padding, width_padding=self.width_padding)
+                ##### Padding + Appending to the list #####
+                underlay_padded = self.pad_image(underlay)
+                combined_underlay_images.append(underlay_padded)
+                ############################################
+
+            for slice_number in self.select_sagittal_slices:
+                underlay = ImageProcessor.brain_padding(self.underlay_img[slice_number, :, :], height_padding=self.height_padding, width_padding=self.width_padding)
+                ##### Padding + Appending to the list #####
+                underlay_padded = self.pad_image(underlay)
+                combined_underlay_images.append(underlay_padded)
+                ############################################
+
+            for slice_number in self.select_coronal_slices:
+                underlay = ImageProcessor.brain_padding(self.underlay_img[:, slice_number, :], height_padding=self.height_padding, width_padding=self.width_padding)
+                ###### Padding + Appending to the list ######
+                underlay_padded = self.pad_image(underlay)
+                combined_underlay_images.append(underlay_padded)
+                ############################################                       
+                
+        return np.hstack(combined_underlay_images)
