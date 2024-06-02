@@ -117,6 +117,7 @@ class QCImageGenerator:
         h_max = min(image_array.shape[0] - y_max, h_max)
         
         # Show the final bounding box on image_to_crop
+        """
         print("Test Breakpoint, May 15, 2024 @plotter.py @function cropped_neck")
         rect = cv2.rectangle(image_to_crop.copy(), (x_max, y_max), (x_max + w_max, y_max + h_max), 255, 2)
         import matplotlib.pyplot as plt
@@ -125,7 +126,7 @@ class QCImageGenerator:
         plt.show()
         
         print("Test Breakpoint, May 15, 2024 @plotter.py @function cropped_neck")
-
+        """
         cropped_image = image_to_crop[y_max:y_max + h_max, x_max:x_max + w_max]
         
         return cropped_image

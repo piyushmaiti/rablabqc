@@ -1,4 +1,3 @@
-# Standard Python libraries
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -98,10 +97,13 @@ class ImageProcessor:
         mask_with_contours = mask.copy()
 
         # Find contours in the mask image
-        contours, _ = cv2.findContours(mask_with_contours, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        # contours, _ = cv2.findContours(mask_with_contours, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        # Update : May 5, 2024 - Changed the retrieval mode to cv2.RETR_LIST to get all the contours
+        contours, _ = cv2.findContours(mask_with_contours, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
         # Draw contours on the copied mask image
-        cv2.drawContours(mask_with_contours, contours, -1, 255, 2)
+        cv2.drawContours(mask_with_contours, contours, -1, 255, 1)
+        
         # change the value of the contours from 255 to 1 and set everything else to 0
         mask_with_contours[mask_with_contours <= 1] = 0
         mask_with_contours[mask_with_contours == 255 ] = 1

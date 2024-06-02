@@ -1,7 +1,5 @@
 import numpy as np
-from freesurferlut import FreeSurferColorLUT
-
-lut_parser = FreeSurferColorLUT()
+import nibabel as nib
 
 freesurfer_lut = {
     "hippocampus": [17, 53],
@@ -56,6 +54,7 @@ def fs_roi_mask(threed_image_array, roi=None, label_indices=None):
 
     else:
         raise ValueError(f"The ROI {roi} is not available in the QC FreeSurfer LUT Dictionary.")
+    
 class SliceSelector:
     def __init__(self, aparc):
         self.aparc = aparc
@@ -104,10 +103,17 @@ class SliceSelector:
         return self._select_slices(axis, roi, label_indices, percentile, num_slices)
     
     def select_leads_slices(self):
-        # Selecting 6 axial slices, starting from 50 percentile to the cerebellum and ending at 50 percentile to the superiorparietal.
-        axial_cerebellum = self._select_slices(axis=2, roi='cerebellum', percentile=0.5)
-        axial_superiorparietal = self._select_slices(axis=2, roi='superiorparietal', percentile=0.5)
-        axial_slices = list(np.linspace(axial_cerebellum,axial_superiorparietal, 6, dtype=int))
+        # Selecting 6 axial slices, starting from 50 percentile to the cerebellum and ending at 75 percentile to the superiorparietal.
+        #axial_cerebellum = self._select_slices(axis=2, roi='cerebellum', percentile=0.5)
+        #axial_superiorparietal = self._select_slices(axis=2, roi='superiorparietal', percentile=0.75)
+        #axial_slices = list(np.linspace(axial_cerebellum,axial_superiorparietal, 6, dtype=int))
+
+        # Change date: May 31, 2024
+        # Selecting 7 axial slices, starting from 40 percentile to the cerebellum and ending at 75 percentile to the superiorparietal.
+        axial_cerebellum = self._select_slices(axis=2, roi='cerebellum', percentile=0.4)
+        axial_superiorparietal = self._select_slices(axis=2, roi='superiorparietal', percentile=0.75)
+        axial_slices = list(np.linspace(axial_cerebellum,axial_superiorparietal, 7, dtype=int))
+
         # Reordering the slices in ascending order
         axial_slices.sort()
 
