@@ -87,8 +87,7 @@ class QCImageGenerator:
         pad_bottom = pad_size - pad_top
         return np.pad(image, ((pad_top, pad_bottom), (0, 0)), mode='constant', constant_values=0)
         
-    #def cropped_neck(self, image_to_crop, raparc_img_slice, neck_height_padding=50, neck_width_padding=60): -- # LEADS
-    def cropped_neck(self, image_to_crop, raparc_img_slice, neck_height_padding=50, neck_width_padding=80):
+    def cropped_neck(self, image_to_crop, raparc_img_slice, neck_height_padding=60, neck_width_padding=80):
 
         image_array = raparc_img_slice.copy()
         # Converting the image to uint8
@@ -116,17 +115,6 @@ class QCImageGenerator:
         w_max = min(image_array.shape[1] - x_max, w_max)
         h_max = min(image_array.shape[0] - y_max, h_max)
         
-        # Show the final bounding box on image_to_crop
-        """
-        print("Test Breakpoint, May 15, 2024 @plotter.py @function cropped_neck")
-        rect = cv2.rectangle(image_to_crop.copy(), (x_max, y_max), (x_max + w_max, y_max + h_max), 255, 2)
-        import matplotlib.pyplot as plt
-        plt.imshow(rect, cmap='gray',vmin = 1, vmax=130)
-        plt.imshow(rect, cmap='gray',vmin = 1, vmax=130)
-        plt.show()
-        
-        print("Test Breakpoint, May 15, 2024 @plotter.py @function cropped_neck")
-        """
         cropped_image = image_to_crop[y_max:y_max + h_max, x_max:x_max + w_max]
         
         return cropped_image
@@ -135,7 +123,6 @@ class QCImageGenerator:
     def process_overlays(self):
         combined_underlay_images = []
         combined_overlay_images = []
-        
         
         if self.crop_neck is not None:
             for slice_number in self.select_axial_slices:
@@ -333,7 +320,6 @@ class QCImageGenerator:
             return np.hstack(combined_underlay_images)
         
     def generate_lines(self):
-   
         
         combined_underlay_images = []
 
