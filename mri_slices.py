@@ -1,9 +1,14 @@
 import os
+import shutil
 import warnings
+import subprocess
+import numpy as np
 import nibabel as nib
 import seaborn as sns
 import matplotlib.pyplot as plt
+from nibabel.orientations import io_orientation, axcodes2ornt
 from matplotlib.colors import LinearSegmentedColormap
+
 
 # Importing the necessary classes from the rablabqc package
 import sys
@@ -85,12 +90,11 @@ class MRIQCplots:
             self.crop_neck = False
             warnings.warn("The aparc_img is not provided. The neck will not be cropped.", UserWarning)
 
-    
+    # ___________________________________________________ LOAD/READ THE IMAGES ___________________________________________________ #
     def load_nii(self,path, orientation="LAS"):
         """
         Load nifti image with specified orientation
         """
-        from nibabel.orientations import io_orientation, axcodes2ornt
 
         img = nib.load(path)
         img_ornt = io_orientation(img.affine)
@@ -98,24 +102,159 @@ class MRIQCplots:
         img = img.as_reoriented(img_ornt)
         return img.get_fdata()
 
+    def generate_matlab_script(self, path, output_script_path):
+        """
+        This function generates a MATLAB script to reslice the image.
+        """
+        with open('/home/mac/pmaiti/Desktop/leads_qc/reslice_test/reslice.m', 'r') as template_file:
+            script_content = template_file.read()
+
+        # Replace placeholders with actual paths
+        script_content = script_content.replace('<DATA_PATH>', path)
+        
+        # Write the modified script to the output path
+        with open(output_script_path, 'w') as script_file:
+            script_file.write(script_content)
+
+
+    def generate_mask_reslice_mtlb(self, path, output_script_path):
+        """
+        This function generates a MATLAB script to reslice the mask image.
+        """
+        
+        with open('/home/mac/pmaiti/Desktop/leads_qc/reslice_test/mask_reslice.m', 'r') as template_file:
+            script_content = template_file.read()
+
+        # Replace placeholders with actual paths
+        script_content = script_content.replace('<DATA_PATH>', path)
+        
+        # Write the modified script to the output path
+        with open(output_script_path, 'w') as script_file:
+            script_file.write(script_content)
+
+
+    def load_nii_resliced(self, path, orientation="LAS", mask=False):
+        """
+        Load nifti image with specified orientation
+        """
+        
+        id = path.split('/')[-1].split('.')[0]
+        tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
+
+        resliced_image_path = os.path.join(tmp_folder, id, 'qc' + id + '.nii')
+        
+        if not os.path.exists(resliced_image_path):
+            
+            # Check if the temporary folder with the id exists
+            tmp_id_folder = os.path.join(tmp_folder, id)
+            if not os.path.exists(tmp_id_folder):
+                os.makedirs(tmp_id_folder)
+            
+            # Copy the image to the temporary id folder
+            tmp_file = os.path.join(tmp_id_folder, id + '.nii')
+            shutil.copy2(path, tmp_file)
+            print(tmp_file)
+            
+            if mask:
+                output_script_path = os.path.join(tmp_id_folder, 'mask_reslice.m')
+                self.generate_mask_reslice_mtlb(tmp_file, output_script_path)
+            else:
+                output_script_path = os.path.join(tmp_id_folder, 'reslice.m')
+                self.generate_matlab_script(tmp_file, output_script_path)
+                
+            # Command to run the MATLAB script
+            command = f"matlab -nodisplay -nosplash -r \"run('{output_script_path}');exit;\""
+            
+            # Run the command
+            matprocess = subprocess.run(command, shell=True, capture_output=True, text=True)
+            print("Output:\n", matprocess.stdout)
+
+        else:
+            print("Resliced image already exists for ", id, ". Loading the resliced image...")
+            
+        img = nib.load(resliced_image_path)
+        img_ornt = io_orientation(img.affine)
+        new_ornt = axcodes2ornt(orientation)
+        img = img.as_reoriented(img_ornt)
+        return img.get_fdata()
     
+    def load_c1_nii_resliced(self,path, orientation="LAS"):
+        """
+        Load nifti image with specified orientation
+        """
+        id = path.split('/')[-1].split('.')[0]
+        tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
+
+        reslice_mask_path = os.path.join(tmp_folder, id, 'qc'+"mask_"+id+".nii")
+        
+        if not os.path.exists(reslice_mask_path):
+            
+            # Check if the temporary folder with the id exists
+            tmp_id_folder = os.path.join(tmp_folder, id)
+            if not os.path.exists(tmp_id_folder):
+                os.makedirs(tmp_id_folder)
+            
+            # Copy the image to the temporary id folder
+            tmp_file = os.path.join(tmp_id_folder, id + '.nii')
+            shutil.copy2(path, tmp_file)
+            print(tmp_file)
+
+            # Loading the nifti image to create a mask of the image
+            img = nib.load(tmp_file)
+            img_data = img.get_fdata()
+            img_affine = img.affine
+            img_header = img.header
+
+            # Creating a mask of the image by thresholding
+            # Set values to 1 between the threshold of 0.8 and 1
+            mask = np.zeros_like(img_data)
+            #mask[(img_data >= 0.8) & (img_data <= 1)] = 1
+            mask[(img_data >= 0.8) & (img_data <= img_data.max())] = 1
+            mask = mask.astype(np.uint8)
+
+            # Save the mask as a nifti image
+            mask_img = nib.Nifti1Image(mask, img_affine, img_header)
+            mask_path = os.path.join(tmp_id_folder,"mask_"+id+".nii")
+            nib.save(mask_img, mask_path)
+            
+            output_script_path = os.path.join(tmp_id_folder, 'mask_reslice.m')
+            
+            self.generate_mask_reslice_mtlb(mask_path, output_script_path)
+            
+            # Command to run the MATLAB script
+            command = f"matlab -nodisplay -nosplash -r \"run('{output_script_path}');exit;\""
+            
+            # Run the command
+            matprocess = subprocess.run(command, shell=True, capture_output=True, text=True)
+            print("Output:\n", matprocess.stdout)
+
+        else:
+            print("Resliced image already exists for ", id, ". Loading the resliced image...")
+            
+        # Resliced mask path
+        img = nib.load(reslice_mask_path)
+        img_ornt = io_orientation(img.affine)
+        new_ornt = axcodes2ornt(orientation)
+        img = img.as_reoriented(img_ornt)
+        return img.get_fdata()
     
+
     def load_images(self):
         """
         Load the provided images and store them as class attributes.
         """
         self.basename = self.nu_img.split('/')[-1].split('_')[0]+'_'+self.nu_img.split('/')[-1].split('_')[1]+'_'+self.nu_img.split('/')[-1].split('_')[2]
         self.nu_img_filename = os.path.basename(self.nu_img)
-        self.nu_img = self.load_nii(self.nu_img)
+        self.nu_img = self.load_nii_resliced(self.nu_img)
         
         if self.aparc_img is not None:
             self.aparc_img_filename = os.path.basename(self.aparc_img)
-            self.aparc_img = self.load_nii(self.aparc_img)
+            self.aparc_img = self.load_nii_resliced(self.aparc_img, mask=True)
             
         if self.c1_img is not None:
             self.c1_img_filename = os.path.basename(self.c1_img)
-            self.c1_img = self.load_nii(self.c1_img)
-
+            self.c1_img = self.load_c1_nii_resliced(self.c1_img)
+            
         if self.affine_nu_img is not None:
             self.affine_nu_img_filename = os.path.basename(self.affine_nu_img)
             self.affine_nu_img = self.load_nii(self.affine_nu_img)
@@ -223,7 +362,7 @@ class MRIQCplots:
     def c1_image_slices(self):
         """
         1. This function generates the slices for the c1(spm segmentation of the Tissue Probability Maps) i.e. the Grey matter (containing high densities of unmyelinated neurons).
-        2. The c1 has been thresholded between 0.3 and 1 to be overlaid on the nu_img.
+        2. The c1 has been thresholded between 0.8 the maximum value in the c1_img.
         3. The function uses nu_img as the underlay image as a base to determine the bounding box for the slices so that it is accurately cropped.
         
         Returns
@@ -236,7 +375,7 @@ class MRIQCplots:
             select_axial_slices=self.axial_slices,
             select_sagittal_slices=self.sagittal_slices,
             select_coronal_slices=self.coronal_slices,
-            mask_lower_threshold=0.8, #mask_upper_threshold=1,
+            #mask_lower_threshold=0.8, mask_upper_threshold= self.c1_img.max(),
             crop_neck=self.aparc_img if self.crop_neck else None).generate_qc_images()
         
         return c1_img_slices
@@ -392,7 +531,7 @@ class MRIQCplots:
 
         # If nu_img, aparc_img, c1_img, affine_nu_img, and warped_nu_img are provided
         elif self.aparc_img is not None and self.c1_img is not None and self.affine_nu_img is not None and self.warped_nu_img is not None:            
-            fig, axes = plt.subplots(5, 1, figsize=(26, 17))
+            fig, axes = plt.subplots(5, 1, figsize=(26, 16))
             
             self.plot_nu_img_aparc_slices(axes)
             self.plot_c1_img_slices(axes[2])
@@ -403,4 +542,4 @@ class MRIQCplots:
         fig.patch.set_facecolor('black')
         plt.subplots_adjust(top=1, wspace=0, hspace=0.3)
        
-        plt.savefig(os.path.join(output_path, self.basename + '.png'), facecolor='black', bbox_inches='tight', dpi=400)
+        plt.savefig(os.path.join(output_path, self.basename + '.png'), facecolor='black', bbox_inches='tight', dpi=500)
