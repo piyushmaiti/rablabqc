@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import warnings
 import subprocess
@@ -11,11 +12,24 @@ from matplotlib.colors import LinearSegmentedColormap
 
 
 # Importing the necessary classes from the rablabqc package
-import sys
-sys.path.append('/home/mac/pmaiti/Desktop/leads_qc/rablabqc')
+#sys.path.append('/home/mac/pmaiti/Desktop/leads_qc/rablabqc')
+rablab_pkg_path = os.path.join(os.getcwd(), 'rablabqc')
+
+print("rablab_pkg_path:", rablab_pkg_path)
+sys.path.append(rablab_pkg_path)
+
 from plotter import QCImageGenerator
 from processing import ImageProcessor
 
+#  ________________________________________________________________ FILE PATHS _______________________________________________________________ #
+tpm_file = os.path.join(rablab_pkg_path,'TPM.nii')
+
+rtpm_path = os.path.join(rablab_pkg_path, 'reslice', 'rT1.nii') # Resliced T1 file to 1mm isotropic resolution
+reslice_matlab_script = os.path.join(rablab_pkg_path,'reslice', 'reslice.m')
+
+mask_reslice_matlab_script = os.path.join(rablab_pkg_path, 'reslice', 'mask_reslice.m')
+
+tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
 #  _____________________________________________________________ CUSTOM COLORMAPS _____________________________________________________________ #
 # Notes: 
 # 1. The custom colormaps are created using the LinearSegmentedColormap class from matplotlib.colors.
@@ -49,7 +63,7 @@ cmap_yellow2.set_under(alpha=0)  # Set transparency for zeros
 mri_vmax = 120
 
 # ______________________________________________________________ TEMPLATE SLICES  ____________________________________________________________ #
-tpm_file = '/home/mac/pmaiti/Desktop/leads_qc/TPM.nii'
+
 def load_tpm(path, orientation="LAS"):
         """
         Load nifti image with specified orientation
@@ -61,13 +75,14 @@ def load_tpm(path, orientation="LAS"):
         new_ornt = axcodes2ornt(orientation)
         img = img.as_reoriented(img_ornt)
         return img.get_fdata()
+
 tpm_image = load_tpm(tpm_file)[:,:,:,0]
 
 template_axial_slices = [15,23, 34, 45, 56, 67, 78]
 template_sagittal_slices = [55,44]
 template_coronal_slices = [48,70]
 
-# ______________________________________________________________________________________________________________________________________________ #
+#  _____________________________________________________________ DEFINE FUNCTIONS _____________________________________________________________ #
 
 class MRIQCplots:
     def __init__(self, nu_img, axial_slices, sagittal_slices, coronal_slices,
@@ -106,10 +121,12 @@ class MRIQCplots:
         """
         This function generates a MATLAB script to reslice the image.
         """
-        with open('/home/mac/pmaiti/Desktop/leads_qc/reslice_test/reslice.m', 'r') as template_file:
+        #with open('/home/mac/pmaiti/Desktop/leads_qc/reslice_test/reslice.m', 'r') as template_file:
+        with open(reslice_matlab_script, 'r') as template_file:
             script_content = template_file.read()
 
         # Replace placeholders with actual paths
+        script_content = script_content.replace('<RTPM_PATH>', rtpm_path)
         script_content = script_content.replace('<DATA_PATH>', path)
         
         # Write the modified script to the output path
@@ -121,11 +138,12 @@ class MRIQCplots:
         """
         This function generates a MATLAB script to reslice the mask image.
         """
-        
-        with open('/home/mac/pmaiti/Desktop/leads_qc/reslice_test/mask_reslice.m', 'r') as template_file:
+        #with open('/home/mac/pmaiti/Desktop/leads_qc/reslice_test/mask_reslice.m', 'r') as template_file:
+        with open(mask_reslice_matlab_script, 'r') as template_file:
             script_content = template_file.read()
 
         # Replace placeholders with actual paths
+        script_content = script_content.replace('<RTPM_PATH>', rtpm_path)
         script_content = script_content.replace('<DATA_PATH>', path)
         
         # Write the modified script to the output path
@@ -139,7 +157,8 @@ class MRIQCplots:
         """
         
         id = path.split('/')[-1].split('.')[0]
-        tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
+
+        # tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
 
         resliced_image_path = os.path.join(tmp_folder, id, 'qc' + id + '.nii')
         
@@ -183,7 +202,7 @@ class MRIQCplots:
         Load nifti image with specified orientation
         """
         id = path.split('/')[-1].split('.')[0]
-        tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
+        # tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
 
         reslice_mask_path = os.path.join(tmp_folder, id, 'qc'+"mask_"+id+".nii")
         
@@ -241,7 +260,17 @@ class MRIQCplots:
 
     def load_images(self):
         """
-        Load the provided images and store them as class attributes.
+        Reads the image file and returns the image data as a numpy array.
+
+        Parameters
+        ----------
+        img_path : str
+            The path to the image file.
+
+        Returns
+        -------
+        numpy.ndarray
+            The image data as a numpy array.
         """
         self.basename = self.nu_img.split('/')[-1].split('_')[0]+'_'+self.nu_img.split('/')[-1].split('_')[1]+'_'+self.nu_img.split('/')[-1].split('_')[2]
         self.nu_img_filename = os.path.basename(self.nu_img)
