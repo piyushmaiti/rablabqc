@@ -12,11 +12,9 @@ from matplotlib.colors import LinearSegmentedColormap
 
 
 # Importing the necessary classes from the rablabqc package
-#sys.path.append('/home/mac/pmaiti/Desktop/leads_qc/rablabqc')
-rablab_pkg_path = os.path.join(os.getcwd(), 'rablabqc')
-
-print("rablab_pkg_path:", rablab_pkg_path)
+rablab_pkg_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(rablab_pkg_path)
+
 
 from plotter import QCImageGenerator
 from processing import ImageProcessor

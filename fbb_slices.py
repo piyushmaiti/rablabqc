@@ -12,11 +12,9 @@ from nibabel.orientations import io_orientation, axcodes2ornt
 from matplotlib.colors import LinearSegmentedColormap
 
 
-# Importing the necessary classes from the rablabqc package
-#sys.path.append('/home/mac/pmaiti/Desktop/leads_qc/rablabqc')
-rablab_pkg_path = os.path.join(os.getcwd(), 'rablabqc')
 
-print("rablab_pkg_path:", rablab_pkg_path)
+# Importing the necessary classes from the rablabqc package
+rablab_pkg_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(rablab_pkg_path)
 
 from plotter import QCImageGenerator
@@ -205,7 +203,6 @@ class FBBQCplots:
         with open(mask_reslice_matlab_script, 'r') as template_file:
             script_content = template_file.read()
 
-        # Replace placeholders with actual paths
         script_content = script_content.replace('<RTPM_PATH>', rtpm_path)
         script_content = script_content.replace('<DATA_PATH>', path)
         
