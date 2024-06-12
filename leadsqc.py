@@ -173,24 +173,24 @@ def main():
             mri_date = data[0].split('_')[-1]
             nu_img = os.path.join(results.path, data[0], id + '_MRI-T1_'+mri_date+'_nu.nii')
             aparcaseg_img = os.path.join(results.path, data[0], id + '_MRI-T1_'+mri_date+'_aparc+aseg.nii')
-            c1_img = os.path.join(results.path, data[0], 'c1'+id + '_MRI-T1_'+mri_date+'_nu.nii')       
+            c1_img = os.path.join(results.path, data[0], 'c1'+id + '_MRI-T1_'+mri_date+'_nu.nii')
             wnu_img = os.path.join(results.path, data[0], 'w'+id + '_MRI-T1_'+mri_date+'_nu.nii')
             affinenu_img = os.path.join(results.path, data[0], 'a'+id + '_MRI-T1_'+mri_date+'_nu.nii')
 
             # ______________________ Loading all the reference region masks ______________________
             
             # For FBB
-            print(" Searching for reference region masks for FBB")
+            print(" Searching reference region masks for FBB")
             wcbl_reference_mask = os.path.join(results.path, data[0], id + '_MRI-T1_'+mri_date+'_mask-wcbl.nii')
             brainstem_reference_mask = os.path.join(results.path, data[0], id + '_MRI-T1_'+mri_date+'_mask-brainstem.nii')
             eroded_subcortwm_reference_mask = os.path.join(results.path, data[0], id + '_MRI-T1_'+mri_date+'_mask-eroded-subcortwm.nii')
 
             # For FTP
-            print(" Searching for reference region masks for FTP")
+            print(" Searching reference region masks for FTP")
             infcblgm_reference_mask = os.path.join(results.path, data[0], id + '_MRI-T1_'+mri_date+'_mask-infcblgm.nii')
 
             # For FDG
-            print(" Searching for reference region masks for FDG")
+            print(" Searching reference region masks for FDG")
             pons_reference_mask = os.path.join(results.path, data[0], id + '_MRI-T1_'+mri_date+'_mask-pons.nii')
             
             
@@ -270,6 +270,7 @@ def main():
             if results.fdg:
                 print("\n______________________")
                 print("Genrating FDG QC Images for ", id,":",data[3])
+                
                 
                 fdg_date = data[3].split('_')[-1]
                 

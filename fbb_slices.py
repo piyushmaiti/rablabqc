@@ -583,13 +583,13 @@ class FBBQCplots:
 
         sns.heatmap(self.mri_based_suvr_img_slices(), cmap="gray", vmin=0.1, vmax=pet_vmax, cbar=False, ax=axes)
         sns.heatmap(self.c1_image_slices(), cmap=cmap_red, vmin = 0.1, cbar=False, ax=axes)
-        axes.set_title(f" Underlay: {self.nu_img_filename} \n Overlay: {self.c1_img_filename} (voxels > 0.8)", fontsize=16, color='white', loc='left')
+        axes.set_title(f" Underlay: {self.suvr_img_filename} \n Overlay: {self.c1_img_filename} (voxels > 0.8)", fontsize=16, color='white', loc='left')
         axes.axis('off')
 
     def plot_reference_region_slices(self, axes):
         cbl_ref_slices = self.reference_region_slices(self.reference_region_1)
-        brainstem_ref_slices = self.reference_region_slices(self.reference_region_2)
-        eroded_subcortwm_ref_slices = self.reference_region_slices(self.reference_region_3)
+        eroded_subcortwm_ref_slices = self.reference_region_slices(self.reference_region_2)
+        brainstem_ref_slices = self.reference_region_slices(self.reference_region_3)
 
         sns.heatmap(self.nu_img_slices(), cmap='gray', vmax=mri_vmax, cbar=False, ax=axes)
         
@@ -599,8 +599,8 @@ class FBBQCplots:
         sns.heatmap(cbl_ref_slices, cmap=cmap_orange, vmin=0.1, alpha=0.3, cbar=False, mask=cbl_ref_slices==0, ax=axes)
         sns.heatmap(ImageProcessor.contour_image(ImageProcessor.mask_image(cbl_ref_slices, lower_threshold = 0.1, upper_threshold=cbl_ref_slices.max())), cbar = False, cmap = cmap_orange, vmin = 0.1, ax = axes)
 
-        sns.heatmap(eroded_subcortwm_ref_slices, cmap=cmap_green_dark, vmin=0.1, alpha=0.3, cbar=False, mask=eroded_subcortwm_ref_slices==0, ax=axes)
-        sns.heatmap(ImageProcessor.contour_image(ImageProcessor.mask_image(eroded_subcortwm_ref_slices, lower_threshold = 0.1, upper_threshold=eroded_subcortwm_ref_slices.max())), cbar = False, cmap = cmap_green_dark, vmin = 0.1, ax = axes)
+        sns.heatmap(eroded_subcortwm_ref_slices, cmap=cmap_green, vmin=0.1, alpha=0.3, cbar=False, mask=eroded_subcortwm_ref_slices==0, ax=axes)
+        sns.heatmap(ImageProcessor.contour_image(ImageProcessor.mask_image(eroded_subcortwm_ref_slices, lower_threshold = 0.1, upper_threshold=eroded_subcortwm_ref_slices.max())), cbar = False, cmap = cmap_green, vmin = 0.1, ax = axes)
 
         axes.set_title(f" Underlay: {self.nu_img_filename} \n Overlay: {self.reference_region_1_filename}, {self.reference_region_2_filename}, {self.reference_region_3_filename}", fontsize=16, color='white', loc='left')
         axes.axis('off')
@@ -663,6 +663,6 @@ class FBBQCplots:
         
         # Removing the 'r' string from the self.basename
         file_name = self.basename.replace('r', '')
-        plt.savefig(os.path.join(output_path, file_name + '.png'), facecolor='black', bbox_inches='tight', dpi=400)
+        plt.savefig(os.path.join(output_path, file_name + '.png'), facecolor='black', bbox_inches='tight', dpi=500)
 
             

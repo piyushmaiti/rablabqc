@@ -582,7 +582,7 @@ class FDGQCplots:
 
         sns.heatmap(self.mri_based_suvr_img_slices(), cmap="gray", vmin=0.1, vmax=pet_vmax, cbar=False, ax=axes)
         sns.heatmap(self.c1_image_slices(), cmap=cmap_red, vmin = 0.1, cbar=False, ax=axes)
-        axes.set_title(f" Underlay: {self.nu_img_filename} \n Overlay: {self.c1_img_filename} (voxels > 0.8)", fontsize=16, color='white', loc='left')
+        axes.set_title(f" Underlay: {self.suvr_img_filename} \n Overlay: {self.c1_img_filename} (voxels > 0.8)", fontsize=16, color='white', loc='left')
         axes.axis('off')
 
     def plot_reference_region_slices(self, axes):
@@ -648,8 +648,8 @@ class FDGQCplots:
             self.plot_warped_suvr_img_slices(axes[6])
 
 
-        add_colorbar(fig, cmap='turbo', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.76, cbar_y=0.77, cbar_width=0.13, cbar_height=0.01)
-        add_colorbar(fig, cmap='gray', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.76, cbar_y=0.51, cbar_width=0.13, cbar_height=0.01)
+        add_colorbar(fig, cmap='turbo', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.77, cbar_y=0.77, cbar_width=0.13, cbar_height=0.01)
+        add_colorbar(fig, cmap='gray', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.77, cbar_y=0.51, cbar_width=0.13, cbar_height=0.01)
 
         fig.patch.set_facecolor('black')
         plt.subplots_adjust(top=1, wspace=0, hspace=0.3)
