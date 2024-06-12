@@ -57,10 +57,10 @@ cmap_orange = create_colormap((1, 0.5, 0))
 cmap_green = create_colormap((0, 1, 0))
 
 # create a darker green colormap
-cmap_green_dark = create_colormap((0, 0.5, 0))
+#cmap_green_dark = create_colormap((0, 0.5, 0))
 
 # create a darker green then cmap_green_dark
-cmap_green_darker = create_colormap((0, 0.25, 0))
+#cmap_green_darker = create_colormap((0, 0.25, 0))
 
 cmap_turbo = plt.cm.turbo
 cmap_turbo.set_under(alpha=0.1)  # Set transparency for zeros
@@ -165,7 +165,7 @@ class FTPQCplots:
             warnings.warn("The aparc_img is not provided. The neck will not be cropped.", UserWarning)
 
 
-        self.pet_vmax = self.petvmax()
+        self.pet_vmax, self.grayscale_vmax = self.petvmax()
         
     # ___________________________________________________ LOAD/READ THE IMAGES ___________________________________________________ #
     def load_nii(self,path, orientation="LAS"):
@@ -398,12 +398,16 @@ class FTPQCplots:
         
         if vmax < 2.5:
             vmax = 2.5
-            print(f"The upper limit for the PET image is set to 2.5 as the 99.5th percentile is less than 2.5.")
 
         # Select values upto 1 decimal place
         vmax = round(vmax, 1)
 
-        return vmax
+        if vmax <= 2.5:
+            grayscale_vmax = 2.0
+        else:
+            grayscale_vmax = vmax
+
+        return vmax, grayscale_vmax
     
     # ______________________________________________________________________________________________________________________________________________ #
     # The following functions generate the slices for the provided images. The slices are generated using the QCImageGenerator class from the plotter.py file.
@@ -609,9 +613,9 @@ class FTPQCplots:
 
     def plot_c1_img_slices(self, axes):
         
-        sns.heatmap(self.mri_based_suvr_img_slices(), cmap="gray", vmin=0.1, vmax=self.pet_vmax, cbar=False, ax=axes)
+        sns.heatmap(self.mri_based_suvr_img_slices(), cmap="gray", vmin=0.1, vmax=self.grayscale_vmax, cbar=False, ax=axes)
         sns.heatmap(self.c1_image_slices(), cmap=cmap_red, vmin = 0.1, cbar=False, ax=axes)
-        axes.set_title(f" Underlay: {self.nu_img_filename} \n Overlay: {self.c1_img_filename} (voxels > 0.8)", fontsize=16, color='white', loc='left')
+        axes.set_title(f" Underlay: {self.suvr_img_filename} \n Overlay: {self.c1_img_filename} (voxels > 0.8)", fontsize=16, color='white', loc='left')
         axes.axis('off')
 
     def plot_reference_region_slices(self, axes):
@@ -620,8 +624,8 @@ class FTPQCplots:
 
         sns.heatmap(self.nu_img_slices(), cmap='gray', vmax=mri_vmax, cbar=False, ax=axes)
 
-        sns.heatmap(erodedwm_ref_slices, cmap=cmap_green_dark, vmin=0.1, alpha=0.3, cbar=False, mask=erodedwm_ref_slices==0, ax=axes)
-        sns.heatmap(ImageProcessor.contour_image(ImageProcessor.mask_image(erodedwm_ref_slices, lower_threshold = 0.1, upper_threshold=erodedwm_ref_slices.max())), cbar = False, cmap = cmap_green_dark, vmin = 0.1, ax = axes)
+        sns.heatmap(erodedwm_ref_slices, cmap=cmap_green, vmin=0.1, alpha=0.3, cbar=False, mask=erodedwm_ref_slices==0, ax=axes)
+        sns.heatmap(ImageProcessor.contour_image(ImageProcessor.mask_image(erodedwm_ref_slices, lower_threshold = 0.1, upper_threshold=erodedwm_ref_slices.max())), cbar = False, cmap = cmap_green, vmin = 0.1, ax = axes)
 
         sns.heatmap(infcblg_ref_slices, cmap=cmap_orange, vmin=0.1, alpha=0.3, cbar=False, mask=infcblg_ref_slices==0, ax=axes)
         sns.heatmap(ImageProcessor.contour_image(ImageProcessor.mask_image(infcblg_ref_slices, lower_threshold = 0.1, upper_threshold=infcblg_ref_slices.max())), cbar = False, cmap = cmap_orange, vmin = 0.1, ax = axes)
@@ -632,7 +636,7 @@ class FTPQCplots:
     def plot_affine_suvr_img_slices(self, axes):
         affine_suvr_slices, afftpm_slices = self.affine_suvr_img_slices()
         
-        sns.heatmap(affine_suvr_slices, cmap="gray", vmin = 0.1, vmax=self.pet_vmax, cbar=False, ax=axes)
+        sns.heatmap(affine_suvr_slices, cmap="gray", vmin = 0.1, vmax=self.grayscale_vmax, cbar=False, ax=axes)
         sns.heatmap(afftpm_slices, cmap=cmap_pink, vmin=0.1, alpha=0.1, cbar=False, ax=axes)
         sns.heatmap(ImageProcessor.contour_image(afftpm_slices), cmap=cmap_pink, vmin=0.1, cbar=False,  ax=axes)
 
@@ -643,7 +647,7 @@ class FTPQCplots:
     def plot_warped_suvr_img_slices(self, axes):
         warped_suvr_slices, wsuvr_tpm_slices = self.warped_suvr_img_slices()
         
-        sns.heatmap(warped_suvr_slices, cmap="gray", vmin = 0.1, vmax=self.pet_vmax, cbar=False, ax=axes)
+        sns.heatmap(warped_suvr_slices, cmap="gray", vmin = 0.1, vmax=self.grayscale_vmax, cbar=False, ax=axes)
         sns.heatmap(wsuvr_tpm_slices, cmap=cmap_pink, vmin=0.1, alpha=0.1, cbar=False, ax=axes)
         sns.heatmap(ImageProcessor.contour_image(wsuvr_tpm_slices), cmap=cmap_pink, vmin=0.1, cbar=False, ax=axes)
 
@@ -662,8 +666,8 @@ class FTPQCplots:
         6. If the affine_suvr_img and warped_suvr_img are provided, the sixth row will be the affine_suvr_img_slices + TPM and the seventh row will be the warped_suvr_img_slices + TPM
         """
         # Setting the maximum value for the PET image
-        pet_vmax = self.petvmax()
-
+        pet_vmax, grayscale_vmax = self.petvmax()
+    
         # Load the images   
         self.load_images()
 
@@ -683,13 +687,12 @@ class FTPQCplots:
             self.plot_warped_suvr_img_slices(axes[6])
 
         add_colorbar(fig, cmap='turbo', vmin=0, vmax=pet_vmax, ticks=[0, pet_vmax], cbar_x=0.76, cbar_y=0.77, cbar_width=0.13, cbar_height=0.01)
-        add_colorbar(fig, cmap='gray', vmin=0, vmax=pet_vmax, ticks=[0, pet_vmax], cbar_x=0.76, cbar_y=0.51, cbar_width=0.13, cbar_height=0.01)
+        add_colorbar(fig, cmap='gray', vmin=0, vmax=grayscale_vmax, ticks=[0, grayscale_vmax], cbar_x=0.76, cbar_y=0.51, cbar_width=0.13, cbar_height=0.01)
 
         fig.patch.set_facecolor('black')
         plt.subplots_adjust(top=1, wspace=0, hspace=0.3)
         
         # Removing the 'r' string from the self.basename
         file_name = self.basename.replace('r', '')
-        plt.savefig(os.path.join(output_path, file_name + '.png'), facecolor='black', bbox_inches='tight', dpi=400)
-
+        plt.savefig(os.path.join(output_path, file_name + '.png'), facecolor='black', bbox_inches='tight', dpi=500)
             
