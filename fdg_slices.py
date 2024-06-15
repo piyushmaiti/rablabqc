@@ -12,6 +12,7 @@ from nibabel.orientations import io_orientation, axcodes2ornt
 from matplotlib.colors import LinearSegmentedColormap
 
 
+
 # Importing the necessary classes from the rablabqc package
 rablab_pkg_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(rablab_pkg_path)
@@ -248,7 +249,7 @@ class FDGQCplots:
             print("Output:\n", matprocess.stdout)
 
         else:
-            print("Resliced image already exists for ", id, ". Loading the resliced image...")
+            print("Resliced image exists for ", id, ". Loading the resliced image...")
             
         img = nib.load(resliced_image_path)
         img_ornt = io_orientation(img.affine)
@@ -546,6 +547,16 @@ class FDGQCplots:
     # The following functions have been defined to generate the plots for the MRI slices. 
     # The functions take the axes as input and plot the images on the axes.
     
+    def plot_suvr_slices(self, axes):
+        """
+        This function plots the suvr_img slices.
+        """
+        sns.heatmap(self.suvr_img_slices(), cmap=cmap_turbo, vmin=0.1, vmax =pet_vmax , cbar=False, ax=axes)
+        axes.text(20, 30, 'L', fontsize=15, color='white')
+        axes.text(150, 30, 'R', fontsize=15, color='white')
+        axes.set_title(f" {self.suvr_img_filename}", fontsize=16, color='white', loc='left')
+        axes.axis('off')
+        
     def plot_mri_slices(self, axes):
         """
         This functions plots only the nu_img slices
@@ -633,10 +644,38 @@ class FDGQCplots:
         self.load_images()
         plt.figure(facecolor='black')
 
+        # If only the suvr_img is provided
+        if self.suvr_img is not None and self.nu_img is None and self.c1_img is None and self.reference_region_1 is None and self.reference_region_2 is None and self.affine_suvr_img is None and self.warped_suvr_img is None:
+            fig, axes = plt.subplots(1, 1, figsize=(25, 2.5))
+            self.plot_suvr_slices(axes)
+
+            add_colorbar(fig, cmap='turbo', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.76, cbar_y=0.12, cbar_width=0.13, cbar_height=0.07)
+
+        # If the suvr_img and nu_img are provided
+        elif self.suvr_img is not None and self.nu_img is not None and self.c1_img is None and self.reference_region_1 is None and self.reference_region_2 is None and self.affine_suvr_img is None and self.warped_suvr_img is None:
+            fig, axes = plt.subplots(3, 1, figsize=(25, 9))
+
+            self.plot_mri_slices(axes[0])
+            self.plot_mri_based_suvr_img_slices(axes[1])
+            self.plot_mri_based_suvr_img_slices_overlaid_on_mri(axes[2])
+
+            add_colorbar(fig, cmap='turbo', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.76, cbar_y=0.44, cbar_width=0.13, cbar_height=0.025)
+
+        # If the suvr_img, nu_img, and c1_img are provided
+        elif self.suvr_img is not None and self.nu_img is not None and self.c1_img is not None and self.reference_region_1 is None and self.reference_region_2 is None and self.affine_suvr_img is None and self.warped_suvr_img is None:
+            fig, axes = plt.subplots(4, 1, figsize=(25, 12))
+
+            self.plot_mri_slices(axes[0])
+            self.plot_mri_based_suvr_img_slices(axes[1])
+            self.plot_mri_based_suvr_img_slices_overlaid_on_mri(axes[2])
+            self.plot_c1_img_slices(axes[3])
+
+            add_colorbar(fig, cmap='turbo', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.76, cbar_y=0.33, cbar_width=0.13, cbar_height=0.02)
+            add_colorbar(fig, cmap='gray', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.76, cbar_y=0.11, cbar_width=0.13, cbar_height=0.02)
+
         # if all the images are provided
 
-        #if self.suvr_img is not None and self.nu_img is not None and self.c1_img is not None and self.reference_region_1 is not None and self.reference_region_2 is not None and self.affine_suvr_img is not None and self.warped_suvr_img is not None:
-        if self.suvr_img is not None and self.nu_img is not None and self.c1_img is not None and self.reference_region_1 is not None and self.affine_suvr_img is not None and self.warped_suvr_img is not None:
+        elif self.suvr_img is not None and self.nu_img is not None and self.c1_img is not None and self.reference_region_1 is not None and self.reference_region_2 is not None and self.affine_suvr_img is not None and self.warped_suvr_img is not None:
             fig, axes = plt.subplots(7, 1, figsize=(25, 22))
 
             self.plot_mri_slices(axes[0])
@@ -647,9 +686,8 @@ class FDGQCplots:
             self.plot_affine_suvr_img_slices(axes[5])
             self.plot_warped_suvr_img_slices(axes[6])
 
-
-        add_colorbar(fig, cmap='turbo', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.77, cbar_y=0.77, cbar_width=0.13, cbar_height=0.01)
-        add_colorbar(fig, cmap='gray', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.77, cbar_y=0.51, cbar_width=0.13, cbar_height=0.01)
+            add_colorbar(fig, cmap='turbo', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.77, cbar_y=0.77, cbar_width=0.13, cbar_height=0.01)
+            add_colorbar(fig, cmap='gray', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.77, cbar_y=0.51, cbar_width=0.13, cbar_height=0.01)
 
         fig.patch.set_facecolor('black')
         plt.subplots_adjust(top=1, wspace=0, hspace=0.3)
