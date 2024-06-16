@@ -645,14 +645,14 @@ class FDGQCplots:
         plt.figure(facecolor='black')
 
         # If only the suvr_img is provided
-        if self.suvr_img is not None and self.nu_img is None and self.c1_img is None and self.reference_region_1 is None and self.reference_region_2 is None and self.affine_suvr_img is None and self.warped_suvr_img is None:
+        if self.suvr_img is not None and self.nu_img is None and self.c1_img is None and self.reference_region_1 is None and self.affine_suvr_img is None and self.warped_suvr_img is None:
             fig, axes = plt.subplots(1, 1, figsize=(25, 2.5))
             self.plot_suvr_slices(axes)
 
             add_colorbar(fig, cmap='turbo', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.76, cbar_y=0.12, cbar_width=0.13, cbar_height=0.07)
 
         # If the suvr_img and nu_img are provided
-        elif self.suvr_img is not None and self.nu_img is not None and self.c1_img is None and self.reference_region_1 is None and self.reference_region_2 is None and self.affine_suvr_img is None and self.warped_suvr_img is None:
+        elif self.suvr_img is not None and self.nu_img is not None and self.c1_img is None and self.reference_region_1 is None and self.affine_suvr_img is None and self.warped_suvr_img is None:
             fig, axes = plt.subplots(3, 1, figsize=(25, 9))
 
             self.plot_mri_slices(axes[0])
@@ -662,7 +662,7 @@ class FDGQCplots:
             add_colorbar(fig, cmap='turbo', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.76, cbar_y=0.44, cbar_width=0.13, cbar_height=0.025)
 
         # If the suvr_img, nu_img, and c1_img are provided
-        elif self.suvr_img is not None and self.nu_img is not None and self.c1_img is not None and self.reference_region_1 is None and self.reference_region_2 is None and self.affine_suvr_img is None and self.warped_suvr_img is None:
+        elif self.suvr_img is not None and self.nu_img is not None and self.c1_img is not None and self.reference_region_1 is None and self.affine_suvr_img is None and self.warped_suvr_img is None:
             fig, axes = plt.subplots(4, 1, figsize=(25, 12))
 
             self.plot_mri_slices(axes[0])
@@ -675,7 +675,7 @@ class FDGQCplots:
 
         # if all the images are provided
 
-        elif self.suvr_img is not None and self.nu_img is not None and self.c1_img is not None and self.reference_region_1 is not None and self.reference_region_2 is not None and self.affine_suvr_img is not None and self.warped_suvr_img is not None:
+        elif self.suvr_img is not None and self.nu_img is not None and self.c1_img is not None and self.reference_region_1 is not None and self.affine_suvr_img is not None and self.warped_suvr_img is not None:
             fig, axes = plt.subplots(7, 1, figsize=(25, 22))
 
             self.plot_mri_slices(axes[0])
