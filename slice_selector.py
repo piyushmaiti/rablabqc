@@ -109,26 +109,35 @@ class SliceSelector:
         #axial_slices = list(np.linspace(axial_cerebellum,axial_superiorparietal, 6, dtype=int))
 
         # Change date: May 31, 2024
-        # Selecting 7 axial slices, starting from 40 percentile to the cerebellum and ending at 75 percentile to the superiorparietal.
+        # Select the axial slices that will be shown
+        n_axial_slices = 8
+
+        # Find the bottom axial slice
         axial_cerebellum = self._select_slices(axis=2, roi='cerebellum', percentile=0.4)
+        axial_idx_lo = axial_cerebellum
+
+        # Find the top axial slice 
         axial_superiorparietal = self._select_slices(axis=2, roi='superiorparietal', percentile=0.75)
-        axial_slices = list(np.linspace(axial_cerebellum,axial_superiorparietal, 7, dtype=int))
+        axial_paracentral = self._select_slices(axis=2, label_indices=[1017,2017], percentile=0.50)
+        axial_idx_hi = max(axial_superiorparietal, axial_paracentral)
 
-        # Reordering the slices in ascending order
-        axial_slices.sort()
+        # Create an evenly-spaced range from bottom to top axial slices
+        axial_slices = list(np.linspace(axial_idx_lo, axial_idx_hi, n_axial_slices, dtype=int))
 
-        # Selecting 2 coronal slices. First slice with 50 percentile to the cerebellum and the second slice with 50 percentile to the hippocampus.
+        # Selecting 3 coronal slices. First slice with 50 percentile to the cerebellum and the second slice with 50 percentile to the hippocampus.
         cerebellum_slice = self._select_slices(axis=1, roi='cerebellum', percentile=0.5)
         hippocampus_slice = self._select_slices(axis=1, roi='hippocampus', percentile=0.5)
+        frontal_slice = self._select_slices(axis=1, label_indices=[1003, 2003], percentile=0.5)
 
-        coronal_slices = [cerebellum_slice, hippocampus_slice]
+        coronal_slices = [cerebellum_slice, hippocampus_slice, frontal_slice]
 
         # Selecting 2 sagittal slices. One with 50 percentile to the left cingulate and 50 percentile to the left hippocampus.
-        left_cingulate_slice = self._select_slices(axis=0, label_indices = [1002, 1026, 1023, 1010], percentile=0.5)
         left_hippocampus_slice = self._select_slices(axis=0, label_indices = [17], percentile=0.5)
+        left_cingulate_slice = self._select_slices(axis=0, label_indices = [1002, 1026, 1023, 1010], percentile=0.5)
+        right_hippocampus_slice = self._select_slices(axis=0, label_indices = [53], percentile=0.5)
 
-        sagittal_slices = [left_cingulate_slice, left_hippocampus_slice]
-
+        #sagittal_slices = [left_cingulate_slice, left_hippocampus_slice, right_hippocampus_slice]
+        sagittal_slices = [left_hippocampus_slice, left_cingulate_slice, right_hippocampus_slice]
         return axial_slices, coronal_slices, sagittal_slices
 
 
