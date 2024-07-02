@@ -322,7 +322,7 @@ class MRIQCplots:
             crop_neck=self.aparc_img if self.crop_neck else None).generate_lines()
 
 
-    def aparc_img_slices(self):
+    def aparc_img_slices_ctx_lh(self):
         """
         1. This function generates the aparc_img slices with the cortical labels thresholded between 1000 and 3000 to be overlaid on the nu_img.
         2. The function uses nu_img as the underlay image as a base to determine the bounding box for the slices so that it is accurately cropped.
@@ -332,16 +332,37 @@ class MRIQCplots:
         -------
         numpy.ndarray : The aparc_img slices.
         """
-        _,aparc_img_slices= QCImageGenerator(
+        _,aparc_img_slices_ctx_lh= QCImageGenerator(
             underlay_img=self.nu_img,
             overlay_img=self.aparc_img,
             select_axial_slices=self.axial_slices,
             select_sagittal_slices=self.sagittal_slices,
             select_coronal_slices=self.coronal_slices,
-            mask_lower_threshold=1000, mask_upper_threshold=3000,
+            mask_lower_threshold=1001, mask_upper_threshold=1035,
             crop_neck=self.aparc_img if self.crop_neck else None).generate_qc_images()
     
-        return aparc_img_slices
+        return aparc_img_slices_ctx_lh
+    
+    def aparc_img_slices_ctx_rh(self):
+        """
+        1. This function generates the aparc_img slices with the cortical labels thresholded between 1000 and 3000 to be overlaid on the nu_img.
+        2. The function uses nu_img as the underlay image as a base to determine the bounding box for the slices so that it is accurately cropped.
+        For more information about the cortical labels(and the threshold values), refer to the following link: https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
+        
+        Returns
+        -------
+        numpy.ndarray : The aparc_img slices.
+        """
+        _,aparc_img_slices_ctx_rh= QCImageGenerator(
+            underlay_img=self.nu_img,
+            overlay_img=self.aparc_img,
+            select_axial_slices=self.axial_slices,
+            select_sagittal_slices=self.sagittal_slices,
+            select_coronal_slices=self.coronal_slices,
+            mask_lower_threshold=1001, mask_upper_threshold=1035,
+            crop_neck=self.aparc_img if self.crop_neck else None).generate_qc_images()
+    
+        return aparc_img_slices_ctx_rh
     
     def generate_subcortical_slices(self):
         """
@@ -498,8 +519,12 @@ class MRIQCplots:
 
         # nu MRI image 
         sns.heatmap(self.nu_img_slices(), cmap='gray', vmin=0, vmax=mri_vmax, cbar=False, ax=axes[1])
-        # Adding the aparc+aseg slices
-        sns.heatmap(self.aparc_img_slices(), cmap=cmap_red, vmax=1, mask=self.aparc_img_slices()==0, cbar=False, ax=axes[1])
+        # Adding the aparc+aseg slices for left hemisphere
+        #sns.heatmap(self.aparc_img_slices(), cmap=cmap_red, vmax=1, mask=self.aparc_img_slices()==0, cbar=False, ax=axes[1])
+        sns.heatmap(self.aparc_img_slices_ctx_lh(), cmap=cmap_red, vmax=1, mask=self.aparc_img_slices_ctx_lh()==0, cbar=False, ax=axes[1])
+        # Adding the aparc+aseg slices for right hemisphere
+        sns.heatmap(self.aparc_img_slices_ctx_rh(), cmap=cmap_red, vmax=1, mask=self.aparc_img_slices_ctx_rh()==0, cbar=False, ax=axes[1])
+        
         # Adding the subcortical regions
         subcortical_regions = self.generate_subcortical_slices()
         subcortical_regions_cmap = (['#3EBCD2'])
