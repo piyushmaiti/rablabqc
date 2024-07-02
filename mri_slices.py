@@ -359,7 +359,7 @@ class MRIQCplots:
             select_axial_slices=self.axial_slices,
             select_sagittal_slices=self.sagittal_slices,
             select_coronal_slices=self.coronal_slices,
-            mask_lower_threshold=1001, mask_upper_threshold=1035,
+            mask_lower_threshold=2001, mask_upper_threshold=2035,
             crop_neck=self.aparc_img if self.crop_neck else None).generate_qc_images()
     
         return aparc_img_slices_ctx_rh
