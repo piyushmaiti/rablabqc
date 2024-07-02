@@ -58,7 +58,7 @@ cmap_yellow2 = LinearSegmentedColormap.from_list('custom_color', [(249/255, 195/
 cmap_yellow2.set_under(alpha=0)  # Set transparency for zeros
 #  ____________________________________________________________ IMAGE THRESHOLDS _____________________________________________________________ #
 
-mri_vmax = 140
+mri_vmax = 160
 
 # ______________________________________________________________ TEMPLATE SLICES  ____________________________________________________________ #
 
@@ -222,10 +222,9 @@ class MRIQCplots:
             img_header = img.header
 
             # Creating a mask of the image by thresholding
-            # Set values to 1 between the threshold of 0.8 and 1
+            # Set values to 1 between the threshold of 0.3 and 1
             mask = np.zeros_like(img_data)
-            #mask[(img_data >= 0.8) & (img_data <= 1)] = 1
-            mask[(img_data >= 0.8) & (img_data <= img_data.max())] = 1
+            mask[(img_data >= 0.3) & (img_data <= img_data.max())] = 1
             mask = mask.astype(np.uint8)
 
             # Save the mask as a nifti image
@@ -367,20 +366,18 @@ class MRIQCplots:
         
         # Define threshold ranges for subcortical regions
         threshold_ranges = {
-            "left_hippocampus": (17, 18),
-            "right_hippocampus": (53, 54),
-            "left_amygdala": (18, 19),
-            "right_amygdala": (54, 55),
-            "left_thalumus": (10, 11),
-            "right_thalumus": (49, 50),
-            "left_pallidum": (13, 14),
-            "right_pallidum": (52, 53),
-            "left_putamen": (12, 13),
-            "right_putamen": (51, 52),
-            "left_caudate": (11, 12),
-            "right_caudate": (50, 51),
-            #"left_cerebellum_cortex": (8, 9),
-            #"right_cerebellum_cortex": (47, 48),
+            "left_hippocampus": (17, 17),
+            "right_hippocampus": (53, 53),
+            "left_amygdala": (18, 18),
+            "right_amygdala": (54, 54),
+            "left_thalumus": (10, 10),
+            "right_thalumus": (49, 49),
+            "left_pallidum": (13, 13),
+            "right_pallidum": (52, 52),
+            "left_putamen": (12, 12),
+            "right_putamen": (51, 51),
+            "left_caudate": (11, 11),
+            "right_caudate": (50, 50)
         }
 
         # Generate subcortical images
@@ -388,8 +385,8 @@ class MRIQCplots:
 
     def generate_cblgm_slices(self):
         """
-        This function generates the subcortical regions from the aparc_img. This uses the nu_img as the underlay image to determine the bounding box for the slices so that it is accurately cropped.
-        For more information regarding the subcortical regions(and the thresholds applied to get the regions), refer to the following link: https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
+        This function generates the cerebellar gray matter regions from the aparc_img. This uses the nu_img as the underlay image to determine the bounding box for the slices so that it is accurately cropped.
+        For more information regarding the cerebellar gray matter regions(and the thresholds applied to get the regions), refer to the following link: https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
         Returns
         -------
         numpy.ndarray : The slices with the subcortical regions.
@@ -407,10 +404,10 @@ class MRIQCplots:
                 crop_neck = self.aparc_img if self.crop_neck else None).generate_qc_images()
             return image
         
-        # Define threshold ranges for subcortical regions
+        # Define threshold ranges for cerebellar gray matter regions
         threshold_ranges = {
-            "left_cerebellum_cortex": (8, 9),
-            "right_cerebellum_cortex": (47, 48)
+            "left_cerebellum_cortex": (8, 8),
+            "right_cerebellum_cortex": (47, 47)
         }
 
         # Generate subcortical images
@@ -527,7 +524,7 @@ class MRIQCplots:
         sns.heatmap(self.nu_img_slices(), cmap='gray', vmin=0, vmax=mri_vmax, cbar=False, ax=axes)
         # Plotting the c1 slices
         sns.heatmap(self.c1_image_slices(), cmap=cmap_red, vmax=1, mask=self.c1_image_slices()==0, cbar=False, ax=axes)
-        axes.set_title(f"Overlay: {self.c1_img_filename} (voxels > 0.8)", fontsize=10, color='white', loc='left')
+        axes.set_title(f"Overlay: {self.c1_img_filename} (voxels > 0.3)", fontsize=10, color='white', loc='left')
         axes.axis('off')
         axes.set_aspect('equal')  # Set aspect ratio to be equal
 
