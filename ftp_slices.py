@@ -11,6 +11,8 @@ from matplotlib.cm import ScalarMappable
 from nibabel.orientations import io_orientation, axcodes2ornt
 from matplotlib.colors import LinearSegmentedColormap
 
+
+
 # Importing the necessary classes from the rablabqc package
 rablab_pkg_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(rablab_pkg_path)
@@ -73,23 +75,24 @@ cmap_blue2 = LinearSegmentedColormap.from_list('custom_color', [(46/255, 69/255,
 cmap_blue2.set_under(alpha=0)  # Set transparency for zeros
 
 # _______________________________________________________________ CUSTOM COLORBAR _____________________________________________________________ #
-
+## Important Note: The old versipn of add_colorbar function has been commented out as it is not being used in the current version of the code.
+"""
 def add_colorbar(fig, cmap='turbo', vmin=0, vmax=2, ticks=[0, 2], cbar_x=0.83, cbar_y=0.75, cbar_width=0.15, cbar_height=0.01):
-    """
-    Add a colorbar to a given axis.
+    
+    #Add a colorbar to a given axis.
 
-    Parameters:
-        fig (matplotlib.figure.Figure): The figure.
-        ax (matplotlib.axes.Axes): The axis to add the colorbar to.
-        cmap (str): The colormap to use.
-        vmin (float): Minimum value of the colorbar.
-        vmax (float): Maximum value of the colorbar.
-        ticks (list): List of tick values for the colorbar.
-        cbar_x (float): X position of the colorbar.
-        cbar_y (float): Y position of the colorbar.
-        cbar_width (float): Width of the colorbar.
-        cbar_height (float): Height of the colorbar.
-    """
+    #Parameters:
+    #    fig (matplotlib.figure.Figure): The figure.
+    #    ax (matplotlib.axes.Axes): The axis to add the colorbar to.
+    #    cmap (str): The colormap to use.
+    #    vmin (float): Minimum value of the colorbar.
+    #    vmax (float): Maximum value of the colorbar.
+    #    ticks (list): List of tick values for the colorbar.
+    #    cbar_x (float): X position of the colorbar.
+    #    cbar_y (float): Y position of the colorbar.
+    #    cbar_width (float): Width of the colorbar.
+    #    cbar_height (float): Height of the colorbar.
+    
     sm = ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=vmin, vmax=vmax))
     sm.set_array([])  # Dummy array
 
@@ -101,12 +104,50 @@ def add_colorbar(fig, cmap='turbo', vmin=0, vmax=2, ticks=[0, 2], cbar_x=0.83, c
     cbar.set_ticks(ticks)
 
     # Set tick labels color to white
-    cbar.ax.tick_params(colors='white', labelsize=16)
+    cbar.ax.tick_params(colors='white', labelsize=10)
+
+    return cbar
+"""
+def add_colorbar(fig, ax, cmap='turbo', vmin=0, vmax=2, ticks=[0, 2], orientation='horizontal', cbar_width=0.13, cbar_height=0.01, cbar_x=0.76):
+    """
+    Add a colorbar to a given axis.
+
+    Parameters:
+        fig (matplotlib.figure.Figure): The figure.
+        ax (matplotlib.axes.Axes): The axis to add the colorbar to.
+        cmap (str): The colormap to use.
+        vmin (float): Minimum value of the colorbar.
+        vmax (float): Maximum value of the colorbar.
+        ticks (list): List of tick values for the colorbar.
+        orientation (str): Orientation of the colorbar ('horizontal' or 'vertical').
+    """
+    sm = ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=vmin, vmax=vmax))
+    sm.set_array([])  # Dummy array
+
+    # Get position of the axis
+    pos = ax.get_position()
+
+    if orientation == 'horizontal':
+        cbar_x = cbar_x  # Slightly to the right of the axis
+        cbar_y = pos.y0 - cbar_height - 0.00  # Adjust this value to move colorbar closer or farther from the axis
+    else:
+        cbar_x = cbar_x
+        cbar_y = pos.y0
+        cbar_width, cbar_height = cbar_height, cbar_width  # Swap width and height for vertical colorbar
+
+    cbar_ax = fig.add_axes([cbar_x, cbar_y, cbar_width, cbar_height])
+    cbar = fig.colorbar(sm, cax=cbar_ax, orientation=orientation)
+
+    # Set tick values
+    cbar.set_ticks(ticks)
+
+    # Set tick labels color to white
+    cbar.ax.tick_params(colors='white', labelsize=10)
 
     return cbar
 #  ______________________________________________________________ Setting Scales  _____________________________________________________________ #
 mri_vmin = 0
-mri_vmax = 120
+mri_vmax = 160
 # pet_vmax = Setting the pet_vmax within the init function of the FTPQCplots class
 
 # ______________________________________________________________ TEMPLATE SLICES  ____________________________________________________________ #
@@ -125,9 +166,9 @@ def load_tpm(path, orientation="LAS"):
 
 tpm_image = load_tpm(tpm_file)[:,:,:,0]
 
-template_axial_slices = [15,23, 34, 45, 56, 67, 78]
-template_sagittal_slices = [55,44]
-template_coronal_slices = [48,70]
+template_axial_slices = [14, 25, 36, 47, 58, 69, 80, 91]
+template_sagittal_slices = [44, 55, 77]
+template_coronal_slices = [48, 70, 83]
 
 #  _____________________________________________________________ DEFINE FUNCTIONS _____________________________________________________________ #
 
@@ -286,10 +327,9 @@ class FTPQCplots:
             img_header = img.header
 
             # Creating a mask of the image by thresholding
-            # Set values to 1 between the threshold of 0.8 and 1
+            # Set values to 1 between the threshold of 0.3 and 1
             mask = np.zeros_like(img_data)
-            #mask[(img_data >= 0.8) & (img_data <= 1)] = 1
-            mask[(img_data >= 0.8) & (img_data <= img_data.max())] = 1
+            mask[(img_data >= 0.3) & (img_data <= img_data.max())] = 1
             mask = mask.astype(np.uint8)
 
             # Save the mask as a nifti image
@@ -398,12 +438,12 @@ class FTPQCplots:
         
         if vmax < 2.5:
             vmax = 2.5
-
+        
         # Select values upto 1 decimal place
         vmax = round(vmax, 1)
 
         if vmax <= 2.5:
-            grayscale_vmax = 2.0
+            grayscale_vmax = 2.5
         else:
             grayscale_vmax = vmax
 
@@ -583,10 +623,11 @@ class FTPQCplots:
         This function plots the suvr_img slices.
         """
         sns.heatmap(self.suvr_img_slices(), cmap=cmap_turbo, vmin=0.1, vmax =self.pet_vmax , cbar=False, ax=axes)
-        axes.text(20, 30, 'L', fontsize=15, color='white')
-        axes.text(150, 30, 'R', fontsize=15, color='white')
-        axes.set_title(f" {self.suvr_img_filename}", fontsize=16, color='white', loc='left')
+        axes.text(10, 30, 'L', fontsize=10, color='white')
+        axes.text(150, 30, 'R', fontsize=10, color='white')
+        axes.set_title(f" {self.suvr_img_filename}", fontsize=10, color='white', loc='left')
         axes.axis('off')
+        axes.set_aspect('equal')
         
     def plot_mri_slices(self, axes):
         """
@@ -596,10 +637,11 @@ class FTPQCplots:
         sns.heatmap(self.nu_img_slices(), cmap='gray', vmax=mri_vmax, cbar=False, ax=axes) 
         # Plotting the lines representing the slices
         sns.heatmap(self.nu_img_lines(), cmap=cmap_yellow2, vmin=0.5, cbar=False, ax=axes)
-        axes.text(20, 30, 'L', fontsize=15, color='white')
-        axes.text(150, 30, 'R', fontsize=15, color='white')
-        axes.set_title(f"{self.nu_img_filename}", fontsize=16, color='white', loc='left')
+        axes.text(10, 30, 'L', fontsize=10, color='white')
+        axes.text(150, 30, 'R', fontsize=10, color='white')
+        axes.set_title(f"{self.nu_img_filename}", fontsize=10, color='white', loc='left')
         axes.axis('off')
+        axes.set_aspect('equal')
     
     def plot_mri_based_suvr_img_slices(self, axes):
         """
@@ -607,8 +649,9 @@ class FTPQCplots:
         """
         
         sns.heatmap(self.mri_based_suvr_img_slices(), cmap=cmap_turbo, vmin=0.1, vmax =self.pet_vmax , cbar=False, ax=axes)
-        axes.set_title(f" {self.suvr_img_filename}", fontsize=16, color='white', loc='left')
+        axes.set_title(f" {self.suvr_img_filename}", fontsize=10, color='white', loc='left')
         axes.axis('off')
+        axes.set_aspect('equal')
 
     def plot_mri_based_suvr_img_slices_overlaid_on_mri(self, axes):
         """
@@ -618,15 +661,17 @@ class FTPQCplots:
         
         sns.heatmap(self.nu_img_slices(), cmap='gray', vmax = mri_vmax, cbar=False, ax=axes)
         sns.heatmap(self.mri_based_suvr_img_slices(), cmap=cmap_turbo, vmin=0.1, vmax =self.pet_vmax , cbar=False, alpha = 0.6, mask=self.mri_based_suvr_img_slices()==0, ax=axes)
-        axes.set_title(f" Underlay: {self.nu_img_filename} \n Overlay: {self.suvr_img_filename}", fontsize=16, color='white', loc='left')
+        axes.set_title(f" Underlay: {self.nu_img_filename} \n Overlay: {self.suvr_img_filename}", fontsize=10, color='white', loc='left')
         axes.axis('off')
+        axes.set_aspect('equal')
 
     def plot_c1_img_slices(self, axes):
         
         sns.heatmap(self.mri_based_suvr_img_slices(), cmap="gray", vmin=0.1, vmax=self.grayscale_vmax, cbar=False, ax=axes)
-        sns.heatmap(self.c1_image_slices(), cmap=cmap_red, vmin = 0.1, cbar=False, ax=axes)
-        axes.set_title(f" Underlay: {self.suvr_img_filename} \n Overlay: {self.c1_img_filename} (voxels > 0.8)", fontsize=16, color='white', loc='left')
+        sns.heatmap(self.c1_image_slices(), cmap=cmap_red, vmin = 0.1, mask=(self.c1_image_slices())==0, cbar=False, ax=axes)
+        axes.set_title(f" Underlay: {self.suvr_img_filename} \n Overlay: {self.c1_img_filename} (voxels > 0.3)", fontsize=10, color='white', loc='left')
         axes.axis('off')
+        axes.set_aspect('equal')
 
     def plot_reference_region_slices(self, axes):
         infcblg_ref_slices = self.reference_region_slices(self.reference_region_1)
@@ -640,29 +685,32 @@ class FTPQCplots:
         sns.heatmap(infcblg_ref_slices, cmap=cmap_orange, vmin=0.1, alpha=0.3, cbar=False, mask=infcblg_ref_slices==0, ax=axes)
         sns.heatmap(ImageProcessor.contour_image(ImageProcessor.mask_image(infcblg_ref_slices, lower_threshold = 0.1, upper_threshold=infcblg_ref_slices.max())), cbar = False, cmap = cmap_orange, vmin = 0.1, ax = axes)
 
-        axes.set_title(f" Underlay: {self.nu_img_filename} \n Overlay: {self.reference_region_1_filename}, {self.reference_region_2_filename}", fontsize=16, color='white', loc='left')
+        axes.set_title(f" Underlay: {self.nu_img_filename} \n Overlay: {self.reference_region_1_filename}, {self.reference_region_2_filename}", fontsize=10, color='white', loc='left')
         axes.axis('off')
+        axes.set_aspect('equal')
 
     def plot_affine_suvr_img_slices(self, axes):
         affine_suvr_slices, afftpm_slices = self.affine_suvr_img_slices()
-        
+        ctr_arr = ImageProcessor.contour_image(afftpm_slices)
         sns.heatmap(affine_suvr_slices, cmap="gray", vmin = 0.1, vmax=self.grayscale_vmax, cbar=False, ax=axes)
-        sns.heatmap(afftpm_slices, cmap=cmap_pink, vmin=0.1, alpha=0.1, cbar=False, ax=axes)
-        sns.heatmap(ImageProcessor.contour_image(afftpm_slices), cmap=cmap_pink, vmin=0.1, cbar=False,  ax=axes)
+        sns.heatmap(afftpm_slices, cmap=cmap_pink, vmin=0.1, alpha=0.1, mask=afftpm_slices==0, cbar=False, ax=axes)
+        sns.heatmap(ctr_arr, cmap=cmap_pink, vmin=0.1, mask=ctr_arr==0, cbar=False,  ax=axes)
 
-        axes.set_title(f" Underlay: {self.affine_suvr_img_filename} \n Overlay: TPM.nii (c1, voxels > 0.3)", fontsize=16, color='white', loc='left')
+        axes.set_title(f" Underlay: {self.affine_suvr_img_filename} \n Overlay: TPM.nii (c1, voxels > 0.3)", fontsize=10, color='white', loc='left')
         axes.axis('off')
+        axes.set_aspect('equal')
 
 
     def plot_warped_suvr_img_slices(self, axes):
         warped_suvr_slices, wsuvr_tpm_slices = self.warped_suvr_img_slices()
-        
+        ctr_arr = ImageProcessor.contour_image(wsuvr_tpm_slices)
         sns.heatmap(warped_suvr_slices, cmap="gray", vmin = 0.1, vmax=self.grayscale_vmax, cbar=False, ax=axes)
-        sns.heatmap(wsuvr_tpm_slices, cmap=cmap_pink, vmin=0.1, alpha=0.1, cbar=False, ax=axes)
-        sns.heatmap(ImageProcessor.contour_image(wsuvr_tpm_slices), cmap=cmap_pink, vmin=0.1, cbar=False, ax=axes)
+        sns.heatmap(wsuvr_tpm_slices, cmap=cmap_pink, vmin=0.1, mask=wsuvr_tpm_slices==0, alpha=0.1, cbar=False, ax=axes)
+        sns.heatmap(ctr_arr, cmap=cmap_pink, vmin=0.1, mask=ctr_arr==0, cbar=False, ax=axes)
 
-        axes.set_title(f" Underlay: {self.warped_suvr_img_filename} \n Overlay: TPM.nii (c1, voxels > 0.3)", fontsize=16, color='white', loc='left')
+        axes.set_title(f" Underlay: {self.warped_suvr_img_filename} \n Overlay: TPM.nii (c1, voxels > 0.3)", fontsize=10, color='white', loc='left')
         axes.axis('off')
+        axes.set_aspect('equal')
 
     #  _____________________________________________________________ Plotting the slices _____________________________________________________________ #
     def plot_slices(self,output_path):
@@ -686,8 +734,8 @@ class FTPQCplots:
         if self.suvr_img is not None and self.nu_img is None and self.c1_img is None and self.reference_region_1 is None and self.reference_region_2 is None and self.affine_suvr_img is None and self.warped_suvr_img is None:
             fig, axes = plt.subplots(1, 1, figsize=(25, 2.5))
             self.plot_suvr_slices(axes)
-
-            add_colorbar(fig, cmap='turbo', vmin=0, vmax=pet_vmax, ticks=[0, pet_vmax], cbar_x=0.76, cbar_y=0.12, cbar_width=0.13, cbar_height=0.07)
+            add_colorbar(fig, axes[2], cmap='turbo', vmin=0, vmax=pet_vmax, ticks=[0, pet_vmax], orientation='horizontal', cbar_width=0.13, cbar_height=0.01, cbar_x=0.76)
+            #add_colorbar(fig, cmap='turbo', vmin=0, vmax=pet_vmax, ticks=[0, pet_vmax], cbar_x=0.76, cbar_y=0.12, cbar_width=0.13, cbar_height=0.07)
 
         # If the suvr_img and nu_img are provided
         elif self.suvr_img is not None and self.nu_img is not None and self.c1_img is None and self.reference_region_1 is None and self.reference_region_2 is None and self.affine_suvr_img is None and self.warped_suvr_img is None:
@@ -696,41 +744,46 @@ class FTPQCplots:
             self.plot_mri_slices(axes[0])
             self.plot_mri_based_suvr_img_slices(axes[1])
             self.plot_mri_based_suvr_img_slices_overlaid_on_mri(axes[2])
-
-            add_colorbar(fig, cmap='turbo', vmin=0, vmax=pet_vmax, ticks=[0, pet_vmax], cbar_x=0.76, cbar_y=0.44, cbar_width=0.13, cbar_height=0.025)
+            add_colorbar(fig, axes[2], cmap='turbo', vmin=0, vmax=pet_vmax, ticks=[0, pet_vmax], orientation='horizontal', cbar_width=0.13, cbar_height=0.01, cbar_x=0.76)
+            #add_colorbar(fig, cmap='turbo', vmin=0, vmax=pet_vmax, ticks=[0, pet_vmax], cbar_x=0.76, cbar_y=0.44, cbar_width=0.13, cbar_height=0.025)
     
         # If the suvr_img, nu_img, and c1_img are provided
         elif self.suvr_img is not None and self.nu_img is not None and self.c1_img is not None and self.reference_region_1 is None and self.reference_region_2 is None and self.affine_suvr_img is None and self.warped_suvr_img is None:
-            fig, axes = plt.subplots(4, 1, figsize=(25, 12))
+            
+            fig, axes = plt.subplots(4, 1, figsize=(17, 8))
 
             self.plot_mri_slices(axes[0])
             self.plot_mri_based_suvr_img_slices(axes[1])
             self.plot_mri_based_suvr_img_slices_overlaid_on_mri(axes[2])
+            add_colorbar(fig, axes[2], cmap='turbo', vmin=0, vmax=pet_vmax, ticks=[0, pet_vmax], orientation='horizontal', cbar_width=0.13, cbar_height=0.01, cbar_x=0.76)
             self.plot_c1_img_slices(axes[3])
+            add_colorbar(fig, axes[3], cmap='gray', vmin=0, vmax=grayscale_vmax, ticks=[0, grayscale_vmax], orientation='horizontal', cbar_width=0.13, cbar_height=0.01, cbar_x=0.76)
 
-            add_colorbar(fig, cmap='turbo', vmin=0, vmax=pet_vmax, ticks=[0, pet_vmax], cbar_x=0.76, cbar_y=0.33, cbar_width=0.13, cbar_height=0.02)
-            add_colorbar(fig, cmap='gray', vmin=0, vmax=grayscale_vmax, ticks=[0, grayscale_vmax], cbar_x=0.76, cbar_y=0.11, cbar_width=0.13, cbar_height=0.02)
+            #add_colorbar(fig, cmap='turbo', vmin=0, vmax=pet_vmax, ticks=[0, pet_vmax], cbar_x=0.76, cbar_y=0.30, cbar_width=0.13, cbar_height=0.02)
+            #add_colorbar(fig, cmap='gray', vmin=0, vmax=grayscale_vmax, ticks=[0, grayscale_vmax], cbar_x=0.77, cbar_y=0.11, cbar_width=0.13, cbar_height=0.02)
 
         # if all the images are provided
 
         elif self.suvr_img is not None and self.nu_img is not None and self.c1_img is not None and self.reference_region_1 is not None and self.reference_region_2 is not None and self.affine_suvr_img is not None and self.warped_suvr_img is not None:
-            fig, axes = plt.subplots(7, 1, figsize=(25, 22))
+
+            fig, axes = plt.subplots(7, 1, figsize=(17, 15))
 
             self.plot_mri_slices(axes[0])
             self.plot_mri_based_suvr_img_slices(axes[1])
             self.plot_mri_based_suvr_img_slices_overlaid_on_mri(axes[2])
+            add_colorbar(fig, axes[2], cmap='turbo', vmin=0, vmax=pet_vmax, ticks=[0, pet_vmax], orientation='horizontal', cbar_width=0.13, cbar_height=0.01, cbar_x=0.76)
             self.plot_c1_img_slices(axes[3])
+            add_colorbar(fig, axes[3], cmap='gray', vmin=0, vmax=grayscale_vmax, ticks=[0, grayscale_vmax], orientation='horizontal', cbar_width=0.13, cbar_height=0.01, cbar_x=0.76)
             self.plot_reference_region_slices(axes[4])
             self.plot_affine_suvr_img_slices(axes[5])
             self.plot_warped_suvr_img_slices(axes[6])
 
-            add_colorbar(fig, cmap='turbo', vmin=0, vmax=pet_vmax, ticks=[0, pet_vmax], cbar_x=0.76, cbar_y=0.77, cbar_width=0.13, cbar_height=0.01)
-            add_colorbar(fig, cmap='gray', vmin=0, vmax=grayscale_vmax, ticks=[0, grayscale_vmax], cbar_x=0.76, cbar_y=0.51, cbar_width=0.13, cbar_height=0.01)
-
         fig.patch.set_facecolor('black')
-        plt.subplots_adjust(top=1, wspace=0, hspace=0.3)
-        
+        #plt.subplots_adjust(top=1, wspace=0, hspace=0.3)
+        #plt.tight_layout()
         # Removing the 'r' string from the self.basename
         file_name = self.basename.replace('r', '')
+        # Adding '_qc' to the file_name at the end
+        file_name = file_name + '_qc'
         plt.savefig(os.path.join(output_path, file_name + '.png'), facecolor='black', bbox_inches='tight', dpi=500)
             
