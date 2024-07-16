@@ -47,12 +47,6 @@ class ImageProcessor:
                 area = w * h
                 x_max, y_max, w_max, h_max = x, y, w, h
         
-        # Add padding at the top and bottom of the brain
-        # x_max -= width_padding # left
-        # y_max -= height_padding # top
-        # w_max += 2 * width_padding # right
-        # h_max += 2 * height_padding # bottom
-        
         # Note: Interchanging width and height padding to match the images after the orientation change
         x_max -= height_padding
         y_max -= width_padding
@@ -97,8 +91,6 @@ class ImageProcessor:
         mask_with_contours = mask.copy()
 
         # Find contours in the mask image
-        # contours, _ = cv2.findContours(mask_with_contours, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        # Update : May 5, 2024 - Changed the retrieval mode to cv2.RETR_LIST to get all the contours
         contours, _ = cv2.findContours(mask_with_contours, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
         # Draw contours on the copied mask image
