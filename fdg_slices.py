@@ -28,7 +28,8 @@ reslice_matlab_script = os.path.join(rablab_pkg_path,'reslice', 'reslice.m')
 
 mask_reslice_matlab_script = os.path.join(rablab_pkg_path, 'reslice', 'mask_reslice.m')
 
-tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
+# tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
+tmp_folder = os.path.join('/tmp/')
 #  _____________________________________________________________ CUSTOM COLORMAPS _____________________________________________________________ #
 # Notes: 
 # 1. The custom colormaps are created using the LinearSegmentedColormap class from matplotlib.colors.
@@ -76,38 +77,7 @@ cmap_blue2.set_under(alpha=0)  # Set transparency for zeros
 
 # _______________________________________________________________ CUSTOM COLORBAR _____________________________________________________________ #
 ## Important Note: The old versipn of add_colorbar function has been commented out as it is not being used in the current version of the code.
-"""
-def add_colorbar(fig, cmap='turbo', vmin=0, vmax=2, ticks=[0, 2], cbar_x=0.83, cbar_y=0.75, cbar_width=0.15, cbar_height=0.01):
-    
-    #Add a colorbar to a given axis.
 
-    #Parameters:
-    #    fig (matplotlib.figure.Figure): The figure.
-    #    ax (matplotlib.axes.Axes): The axis to add the colorbar to.
-    #    cmap (str): The colormap to use.
-    #    vmin (float): Minimum value of the colorbar.
-    #    vmax (float): Maximum value of the colorbar.
-    #    ticks (list): List of tick values for the colorbar.
-    #    cbar_x (float): X position of the colorbar.
-    #    cbar_y (float): Y position of the colorbar.
-    #    cbar_width (float): Width of the colorbar.
-    #    cbar_height (float): Height of the colorbar.
-    
-    sm = ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=vmin, vmax=vmax))
-    sm.set_array([])  # Dummy array
-
-    # Create colorbar for the heatmap
-    cbar_ax = fig.add_axes([cbar_x, cbar_y, cbar_width, cbar_height])
-    cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal')
-
-    # Set tick values
-    cbar.set_ticks(ticks)
-
-    # Set tick labels color to white
-    cbar.ax.tick_params(colors='white', labelsize=10)
-
-    return cbar
-"""
 def add_colorbar(fig, ax, cmap='turbo', vmin=0, vmax=2, ticks=[0, 2], orientation='horizontal', cbar_width=0.13, cbar_height=0.01, cbar_x=0.76):
     """
     Add a colorbar to a given axis.
@@ -257,8 +227,6 @@ class FDGQCplots:
         
         id = path.split('/')[-1].split('.')[0]
 
-        # tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
-
         resliced_image_path = os.path.join(tmp_folder, id, 'qc' + id + '.nii')
         
         if not os.path.exists(resliced_image_path):
@@ -301,7 +269,6 @@ class FDGQCplots:
         Load nifti image with specified orientation
         """
         id = path.split('/')[-1].split('.')[0]
-        # tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
 
         reslice_mask_path = os.path.join(tmp_folder, id, 'qc'+"mask_"+id+".nii")
         

@@ -11,8 +11,6 @@ from matplotlib.cm import ScalarMappable
 from nibabel.orientations import io_orientation, axcodes2ornt
 from matplotlib.colors import LinearSegmentedColormap
 
-
-
 # Importing the necessary classes from the rablabqc package
 rablab_pkg_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(rablab_pkg_path)
@@ -28,7 +26,8 @@ reslice_matlab_script = os.path.join(rablab_pkg_path,'reslice', 'reslice.m')
 
 mask_reslice_matlab_script = os.path.join(rablab_pkg_path, 'reslice', 'mask_reslice.m')
 
-tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
+#tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
+tmp_folder = os.path.join('/tmp/')
 #  _____________________________________________________________ CUSTOM COLORMAPS _____________________________________________________________ #
 # Notes: 
 # 1. The custom colormaps are created using the LinearSegmentedColormap class from matplotlib.colors.
@@ -76,38 +75,7 @@ cmap_blue2.set_under(alpha=0)  # Set transparency for zeros
 
 # _______________________________________________________________ CUSTOM COLORBAR _____________________________________________________________ #
 ## Important Note: The old versipn of add_colorbar function has been commented out as it is not being used in the current version of the code.
-"""
-def add_colorbar(fig, cmap='turbo', vmin=0, vmax=2, ticks=[0, 2], cbar_x=0.83, cbar_y=0.75, cbar_width=0.15, cbar_height=0.01):
-    
-    #Add a colorbar to a given axis.
 
-    #Parameters:
-    #    fig (matplotlib.figure.Figure): The figure.
-    #    ax (matplotlib.axes.Axes): The axis to add the colorbar to.
-    #    cmap (str): The colormap to use.
-    #    vmin (float): Minimum value of the colorbar.
-    #    vmax (float): Maximum value of the colorbar.
-    #    ticks (list): List of tick values for the colorbar.
-    #    cbar_x (float): X position of the colorbar.
-    #    cbar_y (float): Y position of the colorbar.
-    #    cbar_width (float): Width of the colorbar.
-    #    cbar_height (float): Height of the colorbar.
-    
-    sm = ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=vmin, vmax=vmax))
-    sm.set_array([])  # Dummy array
-
-    # Create colorbar for the heatmap
-    cbar_ax = fig.add_axes([cbar_x, cbar_y, cbar_width, cbar_height])
-    cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal')
-
-    # Set tick values
-    cbar.set_ticks(ticks)
-
-    # Set tick labels color to white
-    cbar.ax.tick_params(colors='white', labelsize=10)
-
-    return cbar
-"""
 def add_colorbar(fig, ax, cmap='turbo', vmin=0, vmax=2, ticks=[0, 2], orientation='horizontal', cbar_width=0.13, cbar_height=0.01, cbar_x=0.76):
     """
     Add a colorbar to a given axis.
@@ -257,8 +225,6 @@ class FBBQCplots:
         
         id = path.split('/')[-1].split('.')[0]
 
-        # tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
-
         resliced_image_path = os.path.join(tmp_folder, id, 'qc' + id + '.nii')
         
         if not os.path.exists(resliced_image_path):
@@ -301,8 +267,7 @@ class FBBQCplots:
         Load nifti image with specified orientation
         """
         id = path.split('/')[-1].split('.')[0]
-        # tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
-
+    
         reslice_mask_path = os.path.join(tmp_folder, id, 'qc'+"mask_"+id+".nii")
         
         if not os.path.exists(reslice_mask_path):
@@ -547,20 +512,6 @@ class FBBQCplots:
         """
         """
 
-        """
-        # The following function generates the slices for the warped suvr image without using the warped MRI/nu image as the underlay image.
-        warped_suvr_image_slices, tpm_img_slices = QCImageGenerator(
-            underlay_img=self.warped_suvr_img,
-            overlay_img=tpm_image,
-            select_axial_slices= template_axial_slices,
-            select_sagittal_slices= template_sagittal_slices,
-            select_coronal_slices= template_coronal_slices,
-            mask_lower_threshold=0.3, mask_upper_threshold=1,
-            width_padding = 33, 
-            height_padding = 50).generate_qc_images()
-        
-        return warped_suvr_image_slices, tpm_img_slices
-        """
 
         _, warped_suvr_image_slices = QCImageGenerator(
             underlay_img=self.warped_nu_img,
@@ -747,7 +698,7 @@ class FBBQCplots:
             fig, axes = plt.subplots(1, 1, figsize=(17, 2.5))
             self.plot_suvr_slices(axes)
             add_colorbar(fig, axes[2], cmap='turbo', vmin=0, vmax=2.5, ticks=[0, 2.5], orientation='horizontal', cbar_width=0.13, cbar_height=0.01, cbar_x=0.76)
-            #add_colorbar(fig, cmap='turbo', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.76, cbar_y=0.12, cbar_width=0.13, cbar_height=0.07)
+            
 
         # If the suvr_img and nu_img are provided
         elif self.suvr_img is not None and self.nu_img is not None and self.c1_img is None and self.reference_region_1 is None and self.reference_region_2 is None and self.affine_suvr_img is None and self.warped_suvr_img is None:
@@ -757,7 +708,7 @@ class FBBQCplots:
             self.plot_mri_based_suvr_img_slices(axes[1])
             self.plot_mri_based_suvr_img_slices_overlaid_on_mri(axes[2])
             add_colorbar(fig, axes[2], cmap='turbo', vmin=0, vmax=2.5, ticks=[0, 2.5], orientation='horizontal', cbar_width=0.13, cbar_height=0.01, cbar_x=0.76)
-            #add_colorbar(fig, cmap='turbo', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.76, cbar_y=0.40, cbar_width=0.13, cbar_height=0.025)
+            
 
         # If the suvr_img, nu_img, and c1_img are provided
         elif self.suvr_img is not None and self.nu_img is not None and self.c1_img is not None and self.reference_region_1 is None and self.reference_region_2 is None and self.affine_suvr_img is None and self.warped_suvr_img is None:
@@ -769,9 +720,6 @@ class FBBQCplots:
             add_colorbar(fig, axes[2], cmap='turbo', vmin=0, vmax=2.5, ticks=[0, 2.5], orientation='horizontal', cbar_width=0.13, cbar_height=0.01, cbar_x=0.76)
             self.plot_c1_img_slices(axes[3])
             add_colorbar(fig, axes[3], cmap='gray', vmin=0, vmax=2.5, ticks=[0, 2.5], orientation='horizontal', cbar_width=0.13, cbar_height=0.01, cbar_x=0.76)
-
-            #add_colorbar(fig, cmap='turbo', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.76, cbar_y=0.30, cbar_width=0.13, cbar_height=0.02)
-            #add_colorbar(fig, cmap='gray', vmin=0, vmax=2.5, ticks=[0, 2.5], cbar_x=0.76, cbar_y=0.11, cbar_width=0.13, cbar_height=0.02)
 
         # if all the images are provided
 
