@@ -61,15 +61,34 @@ class QCImageGenerator:
     
     
     ###############################################################################
-    # Functions for Padding the images for plotting
+    # Function to calculate the new y coordinate after rotation and padding
     ###############################################################################
 
-    def calculate_new_y(self, y_original, height_padding, width_padding, underlay_image_array):
+    def calculate_line_position(self, y_original, height_padding, width_padding, underlay_image_array):
+        """
+        Calculate the new y coordinate after padding and rotation.
+
+        Parameters:
+        ----------
+            y_original (int): The original y coordinate.
+            height_padding (int): Padding value to add to the height of each slice.
+            width_padding (int): Padding value to add to the width of each slice.
+            underlay_image_array (numpy.ndarray): The underlay image array.
+
+        Returns:
+        -------
+            int: The new y coordinate after padding and rotation.
+        """
 
         image_array = underlay_image_array.copy()
+
+        # Converting the image to uint8
         image_array_u8 = np.uint8(image_array)
+
+        # Find the contours of the brain using opencv findContours
         contours, _ = cv2.findContours(image_array_u8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+        # Find the largest bounding box which is the brain bounding box. The bounding box with the largest area is the brain# Find the largest bounding box which is the brain bounding box. The bounding box with the largest area is the brain
         area = 0
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
@@ -77,11 +96,13 @@ class QCImageGenerator:
                 area = w * h
                 x_max, y_max, w_max, h_max = x, y, w, h
 
+        # Note: Interchanging width and height padding to match the images after the orientation change
         x_max -= height_padding
         y_max -= width_padding
         w_max += 2 * height_padding
         h_max += 2 * width_padding
 
+        # Check if the padding is within the image boundaries
         if x_max < 0:
             x_max = 0
         if y_max < 0:
@@ -99,7 +120,9 @@ class QCImageGenerator:
 
         return new_y
 
-
+    ###############################################################################
+    # Functions for Padding the images for plotting
+    ###############################################################################
 
     def calculate_max_height(self):
         max_height = []
@@ -119,6 +142,16 @@ class QCImageGenerator:
         return max_height
     
     def pad_image(self, image):
+        """
+        Padding the image to the maximum height, so that all images have the same height for plotting.
+        Parameters:
+        ----------
+            image (numpy.ndarray): The image to be padded.
+
+        Returns:
+        -------
+            numpy.ndarray: The padded image.
+        """
         pad_size = self.max_height - image.shape[0]
         pad_top = pad_size // 2
         pad_bottom = pad_size - pad_top
@@ -394,7 +427,7 @@ class QCImageGenerator:
                 
                     # Adding vertical lines to the image according to the self.select_sagittal_slices
                     for no in self.select_sagittal_slices:
-                        line_position = self.calculate_new_y(no, self.height_padding, self.width_padding, self.underlay_img[:, slice_number, :])
+                        line_position = self.calculate_line_position(no, self.height_padding, self.width_padding, self.underlay_img[:, slice_number, :])
                         line_position = underlay.shape[0] - line_position
                         line_thickness = 2
                         line_range = range(max(0, line_position - line_thickness // 2),
@@ -403,7 +436,7 @@ class QCImageGenerator:
                             underlay[:, col] = 255
     
 
-                    #underlay = self.cropped_neck(underlay, self.crop_neck[:, slice_number,:])
+                    underlay = self.cropped_neck(underlay, self.crop_neck[:, slice_number,:])
                     ###### Padding + Appending to the list ######
                     underlay_padded = self.pad_image(underlay)
                     combined_underlay_images.append(underlay_padded)
@@ -441,7 +474,7 @@ class QCImageGenerator:
                     # Adding vertical lines to the image according to the self.select_coronal_slices
                     for no in self.select_coronal_slices:
                         
-                        line_position = self.calculate_new_y(no, self.height_padding, self.width_padding, self.underlay_img[slice_number, :, :])
+                        line_position = self.calculate_line_position(no, self.height_padding, self.width_padding, self.underlay_img[slice_number, :, :])
                         line_position = underlay.shape[0] - line_position
                         line_thickness = 2
                         line_range = range(max(0, line_position - line_thickness // 2),
@@ -449,7 +482,7 @@ class QCImageGenerator:
                         for col in line_range:
                             underlay[:, col] = 255
                                                     
-                    #underlay = self.cropped_neck(underlay, self.crop_neck[slice_number, :,:])
+                    underlay = self.cropped_neck(underlay, self.crop_neck[slice_number, :,:])
                     ##### Padding + Appending to the list #####
                     underlay_padded = self.pad_image(underlay)
                     combined_underlay_images.append(underlay_padded)
@@ -481,18 +514,28 @@ class QCImageGenerator:
 
                 # adding lines to the first coronal slice according to the sagittal slice selctions
 
-                if slice_number == self.select_coronal_slices[0]:
+                if slice_number == self.select_coronal_slices[1]:
                     underlay = ImageProcessor.brain_padding(self.underlay_img[:, slice_number, :], height_padding=self.height_padding, width_padding=self.width_padding)
                     # Add zero to the underlay image
                     underlay = np.zeros_like(underlay)
-                    # Adding vertical lines to the image according to the self.select_sagittal_slices
                     
-                    for no in self.select_sagittal_slices:
-                        slice_no = underlay.shape[1] - no
+                    # Adding horizontal lines to the image according to the self.select_sagittal_slices
+                    for no in self.select_axial_slices:
+                        slice_no = underlay.shape[0] - no
                         line_position = slice_no
                         line_thickness = 2
                         line_range = range(max(0, line_position - line_thickness // 2),
-                                        min(underlay.shape[1], line_position + line_thickness // 2 + 1))
+                                        min(underlay.shape[0], line_position + line_thickness // 2 + 1))
+                        for row in line_range:
+                            underlay[row, :] = 255
+
+                    # Adding vertical lines to the image according to the self.select_sagittal_slices
+                    for no in self.select_sagittal_slices:
+                        line_position = self.calculate_line_position(no, self.height_padding, self.width_padding, self.underlay_img[:, slice_number, :])
+                        line_position = underlay.shape[0] - line_position
+                        line_thickness = 2
+                        line_range = range(max(0, line_position - line_thickness // 2),
+                                        min(underlay.shape[0], line_position + line_thickness // 2 + 1))
                         for col in line_range:
                             underlay[:, col] = 255
 
@@ -511,7 +554,9 @@ class QCImageGenerator:
 
             for slice_number in self.select_sagittal_slices:
 
-                if slice_number == self.select_sagittal_slices[0]:
+                # adding lines to the second sagittal slice according to the axial slice selctions
+
+                if slice_number == self.select_sagittal_slices[1]:
                     underlay = ImageProcessor.brain_padding(self.underlay_img[slice_number, :, :], height_padding=self.height_padding, width_padding=self.width_padding)
                     # Setting the underlay image to zero
                     underlay = np.zeros_like(underlay)
@@ -526,6 +571,17 @@ class QCImageGenerator:
                         for row in line_range:
                             underlay[row, :] = 255
 
+                    # Adding vertical lines to the image according to the self.select_coronal_slices
+                    for no in self.select_coronal_slices:
+                        
+                        line_position = self.calculate_line_position(no, self.height_padding, self.width_padding, self.underlay_img[slice_number, :, :])
+                        line_position = underlay.shape[0] - line_position
+                        line_thickness = 2
+                        line_range = range(max(0, line_position - line_thickness // 2),
+                                        min(underlay.shape[0], line_position + line_thickness // 2 + 1))
+                        for col in line_range:
+                            underlay[:, col] = 255
+
                     ##### Padding + Appending to the list #####
                     underlay_padded = self.pad_image(underlay)
                     combined_underlay_images.append(underlay_padded)
@@ -534,16 +590,6 @@ class QCImageGenerator:
                     underlay = ImageProcessor.brain_padding(self.underlay_img[slice_number, :, :], height_padding=self.height_padding, width_padding=self.width_padding)
                     # Add zero to the underlay image
                     underlay = np.zeros_like(underlay)
-
-                    # Adding vertical lines to the image according to the self.select_coronal_slices
-                    for no in self.select_coronal_slices:                                                
-                        slice_no = no
-                        line_position = slice_no
-                        line_thickness = 2
-                        line_range = range(max(0, line_position - line_thickness // 2),
-                                        min(underlay.shape[1], line_position + line_thickness // 2 + 1))
-                        for col in line_range:
-                            underlay[:, col] = 255
 
                     ##### Padding + Appending to the list #####
                     underlay_padded = self.pad_image(underlay)
