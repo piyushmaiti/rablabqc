@@ -27,7 +27,8 @@ reslice_matlab_script = os.path.join(rablab_pkg_path,'reslice', 'reslice.m')
 
 mask_reslice_matlab_script = os.path.join(rablab_pkg_path, 'reslice', 'mask_reslice.m')
 
-tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
+# tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
+tmp_folder = os.path.join('/tmp/')
 #  _____________________________________________________________ CUSTOM COLORMAPS _____________________________________________________________ #
 # Notes: 
 # 1. The custom colormaps are created using the LinearSegmentedColormap class from matplotlib.colors.
@@ -155,8 +156,6 @@ class MRIQCplots:
         
         id = path.split('/')[-1].split('.')[0]
 
-        # tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
-
         resliced_image_path = os.path.join(tmp_folder, id, 'qc' + id + '.nii')
         
         if not os.path.exists(resliced_image_path):
@@ -199,7 +198,6 @@ class MRIQCplots:
         Load nifti image with specified orientation
         """
         id = path.split('/')[-1].split('.')[0]
-        # tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
 
         reslice_mask_path = os.path.join(tmp_folder, id, 'qc'+"mask_"+id+".nii")
         
