@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+
+"""
+$ leadsqc_integration.py /home/mac/pmaiti/Desktop/leads_qc/mimic_processed_daniel/LDS1770688/FTP_2024-06-04
+"""
 import os
 import sys
 import shutil
@@ -5,7 +10,7 @@ import argparse
 import subprocess
 
 import nibabel as nib
-from nibabel.orientations import io_orientation, axcodes2ornt
+from nibabel.orientations import io_orientation
 
 # Importing the necessary classes from the rablabqc package
 rablab_pkg_path = os.path.dirname(os.path.abspath(__file__))
@@ -23,13 +28,7 @@ def build_parser():
         description="Description : Python Script to generate Quality Control Images\n",
         formatter_class=argparse.RawTextHelpFormatter
     )
-    p.add_argument('path', type=str, help='Path to the directory containing the MRI and PET files')
-    p.add_argument('output', type=str, help='Path to the output directory')
-    p.add_argument('-mri', '--mri', action='store_true', help='Add this flag to generate QC Images for MRI')
-    p.add_argument('-fbb', '--fbb', action='store_true', help='Add this flag to generate QC Images for FBB')
-    p.add_argument('-ftp', '--ftp', action='store_true', help='Add this flag to generate QC Images for FTP')
-    p.add_argument('-fdg', '--fdg', action='store_true', help='Add this flag to generate QC Images for FDG')
-    p.add_argument('-crop_neck', '--crop_neck', action='store_true', help='Add this flag to crop the neck')
+    p.add_argument('path', type=str, help='Path to the modality directory containing the MRI and PET files')
     return p
 
 # _______________________________________________ Functions to Load Images _______________________________________________
@@ -40,7 +39,8 @@ reslice_matlab_script = os.path.join(rablab_pkg_path,'reslice', 'reslice.m')
 
 mask_reslice_matlab_script = os.path.join(rablab_pkg_path, 'reslice', 'mask_reslice.m')
 
-tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
+#tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
+tmp_folder = os.path.join('/tmp/')
 
 def generate_matlab_script(path, output_script_path):
         """
@@ -79,8 +79,9 @@ def load_nii_resliced(path, orientation="LAS", mask=False):
     """
     
     id = path.split('/')[-1].split('.')[0]
-
-    tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
+    
+    #tmp_folder = os.path.join('/shared/petcore/Projects/LEADS/data_f7p1/summary/piyush_qc/tmp/')
+    tmp_folder = os.path.join('/tmp/')
 
     resliced_image_path = os.path.join(tmp_folder, id, 'qc' + id + '.nii')
     
@@ -115,195 +116,187 @@ def load_nii_resliced(path, orientation="LAS", mask=False):
         
     img = nib.load(resliced_image_path)
     img_ornt = io_orientation(img.affine)
-    new_ornt = axcodes2ornt(orientation)
     img = img.as_reoriented(img_ornt)
     return img.get_fdata()
-
+    
 # _______________________________________________ Function to Process Images _______________________________________________
 def process_qc_images(results, modality):
     
-    folders = [f for f in os.listdir(results.path) if f.startswith(modality)]
-    if not folders:
-        print(f"No {modality}'s found")
+    id = (results.path.rstrip('/')).split('/')[-2]
+    folder = results.path.rstrip('/').split('/')[-1]
+    folder_path = results.path
+    
+    print(f"Processing {modality} for ID : {id}, Folder : {folder}, located \n {folder_path}")
+
+    if os.path.exists(os.path.join(results.path, f"{id}_{folder}_qc.png")):
+        print(f"{modality} QC Image already exists for {folder}")
         return
     
-    folders.sort()
-    print(f"{modality}'s found : ", folders)
-
-    for folder in folders:
-
-        print(f"Processing {modality} QC for {folder}")
+    # ______________________ MRI QC ______________________
+    if modality == 'MRI':
+        mri_date = folder.split('_')[-1]
         
-        folder_path = os.path.join(results.path, folder)
+        # Searching for the relevant files
+        nu_img = os.path.join(folder_path, f"{id}_MRI-T1_{mri_date}_nu.nii")
+        aparc_aseg_img = os.path.join(folder_path, f"{id}_MRI-T1_{mri_date}_aparc+aseg.nii")
+        c1_img = os.path.join(folder_path, f"c1{id}_MRI-T1_{mri_date}_nu.nii")
+        wnu_img = os.path.join(folder_path, f"w{id}_MRI-T1_{mri_date}_nu.nii")
+        affinenu_img = os.path.join(folder_path, f"a{id}_MRI-T1_{mri_date}_nu.nii")
+
+        # ______________________ Generating MRI QC Images ______________________
+        if all(map(os.path.exists, [nu_img, aparc_aseg_img, c1_img, wnu_img, affinenu_img]) ):
+            print("All the files are present, proceeding with slice selection")
+            select_axial_slices, select_coronal_slices, select_sagittal_slices = SliceSelector(load_nii_resliced(aparc_aseg_img, mask = True)).select_leads_slices()
+            print("Selected slices for MRI QC : ", select_axial_slices, select_coronal_slices, select_sagittal_slices)
+            
+            MRIQCplots(nu_img= nu_img, aparc_img= aparc_aseg_img, c1_img= c1_img, 
+                        affine_nu_img= affinenu_img, warped_nu_img= wnu_img,
+                        axial_slices = select_axial_slices, 
+                        coronal_slices = select_coronal_slices,
+                        sagittal_slices = select_sagittal_slices).plot_slices(results.path)
+            
+            print(" -- MRI QC Image Generated -- ")
+        else:
+            print("Some files are missing")
+            return
+
+    # ______________________ FBB QC ______________________
+    if modality == 'FBB':
+        fbb_date = folder.split('_')[-1]
+
+        print("Gathering relevant FBB files")
+        fbb_suvr_img = os.path.join(folder_path, f"r{id}_FBB_{fbb_date}_suvr-wcbl.nii")
+        fbb_affine_suvr_img = os.path.join(folder_path, f"ar{id}_FBB_{fbb_date}_suvr-wcbl.nii")
+        fbb_warped_suvr_img = os.path.join(folder_path, f"wr{id}_FBB_{fbb_date}_suvr-wcbl.nii")
+
+        print("Gathering the relevant MRI files")
+        fbb_related_mri = os.readlink(os.path.join(folder_path,"mri"))
+        fbb_related_mri_date = fbb_related_mri.split('_')[-1]
+
+        fbb_nu_img = os.path.join(fbb_related_mri, f"{id}_MRI-T1_{fbb_related_mri_date}_nu.nii")
+        fbb_aparc_aseg_img = os.path.join(fbb_related_mri, f"{id}_MRI-T1_{fbb_related_mri_date}_aparc+aseg.nii")
+        fbb_c1_img = os.path.join(fbb_related_mri, f"c1{id}_MRI-T1_{fbb_related_mri_date}_nu.nii")
+        fbb_wnu_img = os.path.join(fbb_related_mri, f"w{id}_MRI-T1_{fbb_related_mri_date}_nu.nii")
+        fbb_affinenu_img = os.path.join(fbb_related_mri, f"a{id}_MRI-T1_{fbb_related_mri_date}_nu.nii")
+
+        print("Gathering the Reference Region Masks from the MRI")
+
+        wcbl_reference_mask = os.path.join(fbb_related_mri, f"{id}_MRI-T1_{fbb_related_mri_date}_mask-wcbl.nii")
+        eroded_subcortwm_reference_mask = os.path.join(fbb_related_mri, f"{id}_MRI-T1_{fbb_related_mri_date}_mask-eroded-subcortwm.nii")
+        brainstem_reference_mask = os.path.join(fbb_related_mri, f"{id}_MRI-T1_{fbb_related_mri_date}_mask-brainstem.nii")
+
+        if all(map(os.path.exists, [fbb_suvr_img, fbb_affine_suvr_img, fbb_warped_suvr_img, fbb_nu_img, fbb_aparc_aseg_img, fbb_c1_img, fbb_wnu_img, fbb_affinenu_img, wcbl_reference_mask, brainstem_reference_mask, eroded_subcortwm_reference_mask])):
+            
+            print("All the files are present, proceeding with slice selection")
+            fbb_axial_slices, fbb_coronal_slices, fbb_sagittal_slices = SliceSelector(load_nii_resliced(fbb_aparc_aseg_img, mask = True)).select_leads_slices()
+
+            FBBQCplots(suvr_img= fbb_suvr_img, affine_suvr_img= fbb_affine_suvr_img, warped_suvr_img= fbb_warped_suvr_img,
+                        nu_img= fbb_nu_img, aparc_img= fbb_aparc_aseg_img, c1_img= fbb_c1_img, 
+                        affine_nu_img= fbb_affinenu_img, warped_nu_img= fbb_wnu_img,
+                        reference_region_1 = wcbl_reference_mask,
+                        reference_region_2 = eroded_subcortwm_reference_mask,
+                        reference_region_3 = brainstem_reference_mask,
+                        axial_slices = fbb_axial_slices, 
+                        coronal_slices = fbb_coronal_slices,
+                        sagittal_slices = fbb_sagittal_slices).plot_slices(results.path)
+            
+            print(" -- FBB QC Image Generated -- ")
+        else:
+            print("Some files are missing")
+            return
         
-        if os.path.exists(os.path.join(results.output, f"{os.path.basename(results.path)}_{folder}_qc.png")):
-            print(f"{modality} QC Image already exists for {folder}")
-            continue
+    # ______________________ FTP QC ______________________
+    if modality == 'FTP':
+        ftp_date = folder.split('_')[-1]
 
-        # ______________________ MRI QC ______________________
-        if modality == 'MRI':
-            mri_date = folder.split('_')[-1]
-            
-            # Searching for the relevant files
-            nu_img = os.path.join(folder_path, f"{os.path.basename(results.path)}_MRI-T1_{mri_date}_nu.nii")
-            aparc_aseg_img = os.path.join(folder_path, f"{os.path.basename(results.path)}_MRI-T1_{mri_date}_aparc+aseg.nii")
-            c1_img = os.path.join(folder_path, f"c1{os.path.basename(results.path)}_MRI-T1_{mri_date}_nu.nii")
-            wnu_img = os.path.join(folder_path, f"w{os.path.basename(results.path)}_MRI-T1_{mri_date}_nu.nii")
-            affinenu_img = os.path.join(folder_path, f"a{os.path.basename(results.path)}_MRI-T1_{mri_date}_nu.nii")
+        print("Gathering relevant FTP files")
+        ftp_suvr_img = os.path.join(folder_path, f"r{id}_FTP_{ftp_date}_suvr-infcblgm.nii")
+        affine_suvr_img = os.path.join(folder_path, f"ar{id}_FTP_{ftp_date}_suvr-infcblgm.nii")
+        warped_suvr_img = os.path.join(folder_path, f"wr{id}_FTP_{ftp_date}_suvr-infcblgm.nii")
 
-            # ______________________ Generating MRI QC Images ______________________
-            if all(map(os.path.exists, [nu_img, aparc_aseg_img, c1_img, wnu_img, affinenu_img]) ):
-                print("All the files are present, proceeding with slice selection")
-                select_axial_slices, select_coronal_slices, select_sagittal_slices = SliceSelector(load_nii_resliced(aparc_aseg_img, mask = True)).select_leads_slices()
-                
-                MRIQCplots(nu_img= nu_img, aparc_img= aparc_aseg_img, c1_img= c1_img, 
-                            affine_nu_img= affinenu_img, warped_nu_img= wnu_img,
-                            axial_slices = select_axial_slices, 
-                            coronal_slices = select_coronal_slices,
-                            sagittal_slices = select_sagittal_slices).plot_slices(results.output)
-                
-                print(" -- MRI QC Image Generated -- ")
+        print("Gathering the relevant MRI files")
+        ftp_related_mri = os.readlink(os.path.join(folder_path,"mri"))
+        ftp_related_mri_date = ftp_related_mri.split('_')[-1]
 
-            else:
-                print("Some files are missing")
-                continue
+        ftp_nu_img = os.path.join(ftp_related_mri, f"{id}_MRI-T1_{ftp_related_mri_date}_nu.nii")
+        ftp_aparc_aseg_img = os.path.join(ftp_related_mri, f"{id}_MRI-T1_{ftp_related_mri_date}_aparc+aseg.nii")
+        ftp_c1_img = os.path.join(ftp_related_mri, f"c1{id}_MRI-T1_{ftp_related_mri_date}_nu.nii")
+        ftp_wnu_img = os.path.join(ftp_related_mri, f"w{id}_MRI-T1_{ftp_related_mri_date}_nu.nii")
+        ftp_affinenu_img = os.path.join(ftp_related_mri, f"a{id}_MRI-T1_{ftp_related_mri_date}_nu.nii")
 
-        # ______________________ FBB QC ______________________
-        if modality == 'FBB':
-            fbb_date = folder.split('_')[-1]
+        print("Gathering the Reference Region Masks from the MRI")
+        infcblgm_reference_mask = os.path.join(ftp_related_mri, f"{id}_MRI-T1_{ftp_related_mri_date}_mask-infcblgm.nii")
+        ftp_eroded_subcortwm_reference_mask = os.path.join(ftp_related_mri, f"{id}_MRI-T1_{ftp_related_mri_date}_mask-eroded-subcortwm.nii")
 
-            print("Gathering relevant FBB files")
-            fbb_suvr_img = os.path.join(folder_path, f"r{os.path.basename(results.path)}_FBB_{fbb_date}_suvr-wcbl.nii")
-            fbb_affine_suvr_img = os.path.join(folder_path, f"ar{os.path.basename(results.path)}_FBB_{fbb_date}_suvr-wcbl.nii")
-            fbb_warped_suvr_img = os.path.join(folder_path, f"wr{os.path.basename(results.path)}_FBB_{fbb_date}_suvr-wcbl.nii")
-
-            print("Gathering the relevant MRI files")
-            fbb_related_mri = os.readlink(os.path.join(folder_path,"mri"))
-            fbb_related_mri_date = fbb_related_mri.split('_')[-1]
-
-            fbb_nu_img = os.path.join(fbb_related_mri, f"{os.path.basename(results.path)}_MRI-T1_{fbb_related_mri_date}_nu.nii")
-            fbb_aparc_aseg_img = os.path.join(fbb_related_mri, f"{os.path.basename(results.path)}_MRI-T1_{fbb_related_mri_date}_aparc+aseg.nii")
-            fbb_c1_img = os.path.join(fbb_related_mri, f"c1{os.path.basename(results.path)}_MRI-T1_{fbb_related_mri_date}_nu.nii")
-            fbb_wnu_img = os.path.join(fbb_related_mri, f"w{os.path.basename(results.path)}_MRI-T1_{fbb_related_mri_date}_nu.nii")
-            fbb_affinenu_img = os.path.join(fbb_related_mri, f"a{os.path.basename(results.path)}_MRI-T1_{fbb_related_mri_date}_nu.nii")
-
-            print("Gathering the Reference Region Masks from the MRI")
-    
-            wcbl_reference_mask = os.path.join(fbb_related_mri, f"{os.path.basename(results.path)}_MRI-T1_{fbb_related_mri_date}_mask-wcbl.nii")
-            eroded_subcortwm_reference_mask = os.path.join(fbb_related_mri, f"{os.path.basename(results.path)}_MRI-T1_{fbb_related_mri_date}_mask-eroded-subcortwm.nii")
-            brainstem_reference_mask = os.path.join(fbb_related_mri, f"{os.path.basename(results.path)}_MRI-T1_{fbb_related_mri_date}_mask-brainstem.nii")
-
-            if all(map(os.path.exists, [fbb_suvr_img, fbb_affine_suvr_img, fbb_warped_suvr_img, fbb_nu_img, fbb_aparc_aseg_img, fbb_c1_img, fbb_wnu_img, fbb_affinenu_img, wcbl_reference_mask, brainstem_reference_mask, eroded_subcortwm_reference_mask])):
+        
+        if all(map(os.path.exists, [ftp_suvr_img, affine_suvr_img, warped_suvr_img, ftp_nu_img, ftp_aparc_aseg_img, ftp_c1_img, ftp_wnu_img, ftp_affinenu_img, infcblgm_reference_mask, ftp_eroded_subcortwm_reference_mask])):
                 
                 print("All the files are present, proceeding with slice selection")
-                fbb_axial_slices, fbb_coronal_slices, fbb_sagittal_slices = SliceSelector(load_nii_resliced(fbb_aparc_aseg_img, mask = True)).select_leads_slices()
+                ftp_axial_slices, ftp_coronal_slices, ftp_sagittal_slices = SliceSelector(load_nii_resliced(ftp_aparc_aseg_img, mask = True)).select_leads_slices()
 
-                FBBQCplots(suvr_img= fbb_suvr_img, affine_suvr_img= fbb_affine_suvr_img, warped_suvr_img= fbb_warped_suvr_img,
-                            nu_img= fbb_nu_img, aparc_img= fbb_aparc_aseg_img, c1_img= fbb_c1_img, 
-                            affine_nu_img= fbb_affinenu_img, warped_nu_img= fbb_wnu_img,
-                            reference_region_1 = wcbl_reference_mask,
-                            reference_region_2 = eroded_subcortwm_reference_mask,
-                            reference_region_3 = brainstem_reference_mask,
-                            axial_slices = fbb_axial_slices, 
-                            coronal_slices = fbb_coronal_slices,
-                            sagittal_slices = fbb_sagittal_slices).plot_slices(results.output)
                 
-                print(" -- FBB QC Image Generated -- ")
-            else:
-                print("Some files are missing")
-                continue
-            
-        # ______________________ FTP QC ______________________
-        if modality == 'FTP':
-            ftp_date = folder.split('_')[-1]
+                FTPQCplots(suvr_img= ftp_suvr_img, affine_suvr_img= affine_suvr_img, warped_suvr_img= warped_suvr_img,
+                            nu_img= ftp_nu_img, aparc_img= ftp_aparc_aseg_img, c1_img= ftp_c1_img, 
+                            affine_nu_img= ftp_affinenu_img, warped_nu_img= ftp_wnu_img,
 
-            print("Gathering relevant FTP files")
-            ftp_suvr_img = os.path.join(folder_path, f"r{os.path.basename(results.path)}_FTP_{ftp_date}_suvr-infcblgm.nii")
-            affine_suvr_img = os.path.join(folder_path, f"ar{os.path.basename(results.path)}_FTP_{ftp_date}_suvr-infcblgm.nii")
-            warped_suvr_img = os.path.join(folder_path, f"wr{os.path.basename(results.path)}_FTP_{ftp_date}_suvr-infcblgm.nii")
+                            reference_region_1 = infcblgm_reference_mask,
+                            reference_region_2 = ftp_eroded_subcortwm_reference_mask,
 
-            print("Gathering the relevant MRI files")
-            ftp_related_mri = os.readlink(os.path.join(folder_path,"mri"))
-            ftp_related_mri_date = ftp_related_mri.split('_')[-1]
+                            axial_slices = ftp_axial_slices, 
+                            coronal_slices = ftp_coronal_slices,
+                            sagittal_slices = ftp_sagittal_slices).plot_slices(results.path)
+                
+                print(" -- FTP QC Image Generated -- ")
 
-            ftp_nu_img = os.path.join(ftp_related_mri, f"{os.path.basename(results.path)}_MRI-T1_{ftp_related_mri_date}_nu.nii")
-            ftp_aparc_aseg_img = os.path.join(ftp_related_mri, f"{os.path.basename(results.path)}_MRI-T1_{ftp_related_mri_date}_aparc+aseg.nii")
-            ftp_c1_img = os.path.join(ftp_related_mri, f"c1{os.path.basename(results.path)}_MRI-T1_{ftp_related_mri_date}_nu.nii")
-            ftp_wnu_img = os.path.join(ftp_related_mri, f"w{os.path.basename(results.path)}_MRI-T1_{ftp_related_mri_date}_nu.nii")
-            ftp_affinenu_img = os.path.join(ftp_related_mri, f"a{os.path.basename(results.path)}_MRI-T1_{ftp_related_mri_date}_nu.nii")
+        else:
+            print("Some files are missing")
+            return
+        
+    # ______________________ FDG QC ______________________
+    if modality == 'FDG':
+        fdg_date = folder.split('_')[-1]
 
-            print("Gathering the Reference Region Masks from the MRI")
-            infcblgm_reference_mask = os.path.join(ftp_related_mri, f"{os.path.basename(results.path)}_MRI-T1_{ftp_related_mri_date}_mask-infcblgm.nii")
-            ftp_eroded_subcortwm_reference_mask = os.path.join(ftp_related_mri, f"{os.path.basename(results.path)}_MRI-T1_{ftp_related_mri_date}_mask-eroded-subcortwm.nii")
-            
-            if all(map(os.path.exists, [ftp_suvr_img, affine_suvr_img, warped_suvr_img, ftp_nu_img, ftp_aparc_aseg_img, ftp_c1_img, ftp_wnu_img, ftp_affinenu_img, infcblgm_reference_mask, ftp_eroded_subcortwm_reference_mask])):
-                    
-                    print("All the files are present, proceeding with slice selection")
-                    ftp_axial_slices, ftp_coronal_slices, ftp_sagittal_slices = SliceSelector(load_nii_resliced(ftp_aparc_aseg_img, mask = True)).select_leads_slices()
+        print("Gathering relevant FDG files")
+        fdg_suvr_img = os.path.join(folder_path, f"r{id}_FDG_{fdg_date}_suvr-pons.nii")
+        fdg_affine_suvr_img = os.path.join(folder_path, f"ar{id}_FDG_{fdg_date}_suvr-pons.nii")
+        fdg_warped_suvr_img = os.path.join(folder_path, f"wr{id}_FDG_{fdg_date}_suvr-pons.nii")
 
-                    
-                    FTPQCplots(suvr_img= ftp_suvr_img, affine_suvr_img= affine_suvr_img, warped_suvr_img= warped_suvr_img,
-                                nu_img= ftp_nu_img, aparc_img= ftp_aparc_aseg_img, c1_img= ftp_c1_img, 
-                                affine_nu_img= ftp_affinenu_img, warped_nu_img= ftp_wnu_img,
+        print("Gathering the relevant MRI files")
+        fdg_related_mri = os.readlink(os.path.join(folder_path,"mri"))
+        fdg_related_mri_date = fdg_related_mri.split('_')[-1]
 
-                                reference_region_1 = infcblgm_reference_mask,
-                                reference_region_2 = ftp_eroded_subcortwm_reference_mask,
+        fdg_nu_img = os.path.join(fdg_related_mri, f"{id}_MRI-T1_{fdg_related_mri_date}_nu.nii")
+        fdg_aparc_aseg_img = os.path.join(fdg_related_mri, f"{id}_MRI-T1_{fdg_related_mri_date}_aparc+aseg.nii")
+        fdg_c1_img = os.path.join(fdg_related_mri, f"c1{id}_MRI-T1_{fdg_related_mri_date}_nu.nii")
+        fdg_wnu_img = os.path.join(fdg_related_mri, f"w{id}_MRI-T1_{fdg_related_mri_date}_nu.nii")
+        fdg_affinenu_img = os.path.join(fdg_related_mri, f"a{id}_MRI-T1_{fdg_related_mri_date}_nu.nii")
 
-                                axial_slices = ftp_axial_slices, 
-                                coronal_slices = ftp_coronal_slices,
-                                sagittal_slices = ftp_sagittal_slices).plot_slices(results.output)
-                    
-                    print(" -- FTP QC Image Generated -- ")
+        print("Gathering the Reference Region Masks from the MRI")
+        pons_reference_mask = os.path.join(fdg_related_mri, f"{id}_MRI-T1_{fdg_related_mri_date}_mask-pons.nii")
 
-            else:
-                print("Some files are missing")
-                continue
-                    
-        # ______________________ FDG QC ______________________
-        if modality == 'FDG':
-            fdg_date = folder.split('_')[-1]
 
-            print("Gathering relevant FDG files")
-            fdg_suvr_img = os.path.join(folder_path, f"r{os.path.basename(results.path)}_FDG_{fdg_date}_suvr-pons.nii")
-            fdg_affine_suvr_img = os.path.join(folder_path, f"ar{os.path.basename(results.path)}_FDG_{fdg_date}_suvr-pons.nii")
-            fdg_warped_suvr_img = os.path.join(folder_path, f"wr{os.path.basename(results.path)}_FDG_{fdg_date}_suvr-pons.nii")
+        if all(map(os.path.exists, [fdg_suvr_img, fdg_affine_suvr_img, fdg_affinenu_img, fdg_warped_suvr_img, fdg_nu_img, fdg_aparc_aseg_img, fdg_c1_img, fdg_wnu_img, fdg_affinenu_img, pons_reference_mask])):
+                
+                print("All the files are present, proceeding with slice selection")
+                fdg_axial_slices, fdg_coronal_slices, fdg_sagittal_slices = SliceSelector(load_nii_resliced(fdg_aparc_aseg_img, mask = True)).select_leads_slices()
 
-            print("Gathering the relevant MRI files")
-            fdg_related_mri = os.readlink(os.path.join(folder_path,"mri"))
-            fdg_related_mri_date = fdg_related_mri.split('_')[-1]
+                
+                FDGQCplots(suvr_img= fdg_suvr_img, affine_suvr_img= fdg_affine_suvr_img, warped_suvr_img= fdg_warped_suvr_img,
+                            nu_img= fdg_nu_img, aparc_img= fdg_aparc_aseg_img, c1_img= fdg_c1_img, 
+                            affine_nu_img= fdg_affinenu_img, warped_nu_img= fdg_wnu_img,
+                            reference_region_1 = pons_reference_mask,
+                            axial_slices = fdg_axial_slices, 
+                            coronal_slices = fdg_coronal_slices,
+                            sagittal_slices = fdg_sagittal_slices).plot_slices(results.path)
+                
 
-            fdg_nu_img = os.path.join(fdg_related_mri, f"{os.path.basename(results.path)}_MRI-T1_{fdg_related_mri_date}_nu.nii")
-            fdg_aparc_aseg_img = os.path.join(fdg_related_mri, f"{os.path.basename(results.path)}_MRI-T1_{fdg_related_mri_date}_aparc+aseg.nii")
-            fdg_c1_img = os.path.join(fdg_related_mri, f"c1{os.path.basename(results.path)}_MRI-T1_{fdg_related_mri_date}_nu.nii")
-            fdg_wnu_img = os.path.join(fdg_related_mri, f"w{os.path.basename(results.path)}_MRI-T1_{fdg_related_mri_date}_nu.nii")
-            fdg_affinenu_img = os.path.join(fdg_related_mri, f"a{os.path.basename(results.path)}_MRI-T1_{fdg_related_mri_date}_nu.nii")
+                print(" -- FDG QC Image Generated -- ")
 
-            print("Gathering the Reference Region Masks from the MRI")
-            pons_reference_mask = os.path.join(fdg_related_mri, f"{os.path.basename(results.path)}_MRI-T1_{fdg_related_mri_date}_mask-pons.nii")
-
-            if all(map(os.path.exists, [fdg_suvr_img, fdg_affine_suvr_img, fdg_affinenu_img, fdg_warped_suvr_img, fdg_nu_img, fdg_aparc_aseg_img, fdg_c1_img, fdg_wnu_img, fdg_affinenu_img, pons_reference_mask])):
-                    
-                    print("All the files are present, proceeding with slice selection")
-                    fdg_axial_slices, fdg_coronal_slices, fdg_sagittal_slices = SliceSelector(load_nii_resliced(fdg_aparc_aseg_img, mask = True)).select_leads_slices()
-
-                    
-                    FDGQCplots(suvr_img= fdg_suvr_img, affine_suvr_img= fdg_affine_suvr_img, warped_suvr_img= fdg_warped_suvr_img,
-                                nu_img= fdg_nu_img, aparc_img= fdg_aparc_aseg_img, c1_img= fdg_c1_img, 
-                                affine_nu_img= fdg_affinenu_img, warped_nu_img= fdg_wnu_img,
-                                reference_region_1 = pons_reference_mask,
-                                axial_slices = fdg_axial_slices, 
-                                coronal_slices = fdg_coronal_slices,
-                                sagittal_slices = fdg_sagittal_slices).plot_slices(results.output)
-                    
-
-                    print(" -- FDG QC Image Generated -- ")
-
-            else:
-                print("Some files are missing")
-                continue
+        else:
+            print("Some files are missing")
+            return
     
-    print(" \n ----------- \n ")
-
+    
 def main():
     parser = build_parser()
     results = parser.parse_args()
@@ -312,22 +305,24 @@ def main():
         print("Error: Input path does not exist.")
         return
 
-    if not os.path.exists(results.output):
-        print("Error: Output directory does not exist.")
-        return
-
-    id = os.path.basename(os.path.normpath(results.path))
+    id = (results.path).split('/')[-2]
     print("Processing ID : ", id)
     print("-----------")
 
-    if results.mri:
-        process_qc_images(results, 'MRI')
-    if results.fbb:
-        process_qc_images(results, 'FBB')
-    if results.ftp:
-        process_qc_images(results, 'FTP')
-    if results.fdg:
-        process_qc_images(results, 'FDG')
+    # Extarcitng the modality from the path name
+    #modality = os.path.basename(results.path).split('/')[-1].split('_')[0]
+    modality = os.path.basename(results.path.rstrip('/')).split('_')[0]
 
+    print("Modality : ", modality)
+    
+    if modality == 'MRI-T1':
+        process_qc_images(results, 'MRI')
+    if modality == 'FBB':
+        process_qc_images(results, 'FBB')
+    if modality == 'FTP':
+        process_qc_images(results, 'FTP')
+    if modality == 'FDG':
+        process_qc_images(results, 'FDG')
+    
 if __name__ == '__main__':
     main()
